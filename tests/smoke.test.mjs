@@ -33,7 +33,7 @@ test('voiceover controls and local-only recording are wired',()=>{
  for(const name of ['startRecording','stopRecording','showTakes','wavFromTake','pcm16Wav','setRecordingControls'])assert.match(html,new RegExp('function '+name+'\\('));
  assert.match(html,/getUserMedia\(\{audio:/);
  assert.match(html,/MediaRecorder/);
- assert.match(html,/recordingSession\?recordingSession\.scriptStart/);
+ assert.match(html,/session\.scriptStart/);
 });
 
 test('PCM encoder creates valid aligned mono 16-bit WAV with leading silence',async()=>{
