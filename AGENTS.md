@@ -10,3 +10,6 @@
 
 8. Preserve audio privacy: microphone-only input, no upload, explicit download, volatile takes.
 9. Do not remove the recorder's transport locks or 1× sync without replacing the timing algorithm and tests.
+
+10. Take trim is in-memory and non-destructive. Preserve media-time alignment for review/export.
+11. Keep reference video visible when take panel scrolls, and retain responsive layout.
