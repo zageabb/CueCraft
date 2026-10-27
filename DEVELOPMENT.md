@@ -21,3 +21,12 @@ Versioning: keep the repository entrypoint `index.html` and downloadable `CueCra
 - Real microphone permissions and Safari MP4 recorder compatibility require manual hardware checks. Browser-automation uses mocked microphone capture.
 - Keep CI green before merging and verify the demo remains functional without any media file.
 
+
+## Adaptive layout (v0.2.2)
+
+- Keep `index.html` as the canonical UDA entry point; release downloads always use `CueCraft.html`. The version is in the HTML meta tag.
+- Desktop columns use the full viewport: flexible autocue, a keyboard/pointer resize handle, and a reference video column defaulting to 39%.
+- Persist `videoColumnRatio` in existing CueCraft local settings, clamped to sensible minima/maxima. Store a *ratio*, not pixels: screen-size changes must retain usable layout.
+- At viewport widths <=980px, use the stacked layout with a full-width video, and hide the divider.
+- Check at 1600x900, 1366x768, 1024x768, 980x720 and 390x844; no horizontal page overflow. Double-click reset and keyboard arrow adjustment must work.
+- Column resizing reflows the narration, which is re-positioned by the existing animation-frame loop.

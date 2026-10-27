@@ -66,3 +66,22 @@ test('application version is embedded in HTML metadata and displayed dynamically
  assert.match(html, /getElementById\('appVersion'\)\.textContent/);
  assert.match(html, /\$\{APP_VERSION\}/);
 });
+
+
+test('responsive studio uses percentage video width, full viewport and an accessible divider',()=>{
+ assert.match(html, /\.shell\{--video-column:39%;width:100%;max-width:none;/);
+ assert.doesNotMatch(html, /grid-template-columns:minmax\(0,1fr\) 336px/);
+ assert.match(html, /id="layoutDivider"[^>]+role="separator"/);
+ for(const method of ['bindLayoutDivider','setVideoColumnRatio','layoutLimits']) assert.match(html,new RegExp('function '+method+'\\('));
+ assert.match(html, /pointerdown/);
+ assert.match(html, /pointermove/);
+ assert.match(html, /dblclick/);
+ assert.match(html, /videoColumnRatio/);
+});
+
+test('tablet and mobile panels stack with a full-width video',()=>{
+ assert.match(html, /@media\(max-width:980px\)\{\.shell\{display:flex;flex-direction:column;/);
+ assert.match(html, /\.side > \.side-panel:first-child\{grid-column:1\/-1\}/);
+ assert.match(html, /\.layout-divider\{display:none\}/);
+ assert.match(html, /\.video-placeholder\{width:100%;aspect-ratio:16\/9;/);
+});
