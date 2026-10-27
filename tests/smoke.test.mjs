@@ -27,3 +27,32 @@ test('Onboarding demo controls exist',()=>{
  assert.match(html,/function toggleDemo\(\)/);
 });
 test('Public app does not include production narration',()=>assert.doesNotMatch(html,/should-cost analysis|135 MVA|Hitachi|TAIJU/i));
+
+test('voiceover controls and local-only recording are wired',()=>{
+ for(const id of ['recordFrom','recordBtn','recordState','takeList','recordAvailability'])assert.match(html,new RegExp('id="'+id+'"'));
+ for(const name of ['startRecording','stopRecording','showTakes','wavFromTake','pcm16Wav','setRecordingControls'])assert.match(html,new RegExp('function '+name+'\\('));
+ assert.match(html,/getUserMedia\(\{audio:/);
+ assert.match(html,/MediaRecorder/);
+ assert.match(html,/recordingSession\?recordingSession\.scriptStart/);
+});
+
+test('PCM encoder creates valid aligned mono 16-bit WAV with leading silence',async()=>{
+ const source=html.match(/function pcm16Wav\([\s\S]*?^\}/m)?.[0];assert.ok(source);
+ const sandbox=vm.createContext({Blob});vm.runInContext(source,sandbox);
+ const wav=vm.runInContext('pcm16Wav(new Float32Array([1,-1,0.5,0]),8000,.25)',sandbox);
+ const buffer=Buffer.from(await wav.arrayBuffer());
+ assert.equal(buffer.toString('ascii',0,4),'RIFF');assert.equal(buffer.toString('ascii',8,12),'WAVE');
+ assert.equal(buffer.readUInt16LE(20),1);assert.equal(buffer.readUInt16LE(22),1);
+ assert.equal(buffer.readUInt32LE(24),8000);assert.equal(buffer.readUInt16LE(34),16);
+ assert.equal(buffer.readUInt32LE(40),4008);assert.equal(buffer.length,4052);
+ assert.equal(buffer.readInt16LE(44),0);assert.equal(buffer.readInt16LE(44+2000*2),32767);
+ assert.equal(buffer.readInt16LE(44+2001*2),-32768);
+ assert.equal(buffer.readInt16LE(44+2002*2),16384);
+ assert.throws(()=>vm.runInContext('pcm16Wav(new Float32Array([0]),8000,-1)',sandbox),/Invalid WAV/);
+});
+
+test('recordings are session-only and can be removed without affecting the cue script',()=>{
+ assert.match(html,/URL\.revokeObjectURL\(take\.url\)/);
+ assert.match(html,/takes\.filter\(t=>t!==take\)/);
+ assert.doesNotMatch(html,/localStorage\.setItem\([^\n]*takes/);
+});

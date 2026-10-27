@@ -7,3 +7,6 @@
 5. Use accessible controls and keyboard shortcuts. Fail clearly on malformed input.
 6. Extend tests and retain green CI before merging to main.
 7. Only claim features that are implemented and tested.
+
+8. Preserve audio privacy: microphone-only input, no upload, explicit download, volatile takes.
+9. Do not remove the recorder's transport locks or 1× sync without replacing the timing algorithm and tests.
