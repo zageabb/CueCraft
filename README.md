@@ -26,7 +26,7 @@ python scripts/create_demo_video.py
 
 Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and practise speaking the preloaded narration. The demo is **intentionally silent** so you can record your own replacement voiceover. Generated video is not committed to the repository to keep it small.
 
-## Features (v0.1.0)
+## Features (v0.2.0)
 
 - Large time-synchronised autocue, word-by-word pace guidance, countdowns, next-cue preview
 - Embedded beginner-friendly three-slide guided demo and downloadable/generated MP4 counterpart
@@ -36,7 +36,34 @@ Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and pract
 - Scripts and settings saved in local browser storage, when supported
 - Runs entirely offline with plain HTML, CSS and JavaScript
 
-**Important:** Word highlighting follows the timer, not live speech. This version does **not** record from the microphone, synthesise voices or export a finished edited video. Those are possible later features.
+**Important:** Word highlighting follows the timeline, not live speech. This version records microphone audio but does **not** synthesise voices, edit multiple takes, or render a final video directly.
+
+
+## Record a narration take (v0.2.0)
+
+1. Load a video, or use the three-slide guided demo. Timer-only mode also works.
+2. Under **Record voiceover**, select **From start**, **Current cue** or **Current position**.
+3. Press **● Record** and grant the browser microphone permission. CueCraft switches to **1× speed** and starts the teleprompter/video, with the reference video muted.
+4. Follow the text, then press **■ Stop take**. Recording also stops automatically when the video/timeline finishes.
+5. Review your take with its audio player. Download **Original** to keep the browser's native audio (often WebM/Opus on Chrome/Edge or MP4 audio on Safari).
+6. Or download **Aligned WAV** for 16-bit mono PCM with leading silence added when you started partway through the video. WAV is intended for a video editor or FFmpeg.
+
+**Take privacy:** audio is held only in browser memory until you explicitly download it. Closing or refreshing the tab loses unsaved takes. To avoid memory growth, at most twelve takes remain available at once. CueCraft makes no uploads and requests microphone-only capture.
+
+Playback seek, pause, cue editing and script import are intentionally locked during capture. Use headphones to avoid capturing the reference audio. Browser recordings can have slight startup/codec latency, so check the final sync by listening. Recording requires browser microphone permission and a secure origin; trusted local files or localhost generally work, depending on your browser.
+
+### Replace the soundtrack using FFmpeg (optional)
+
+Download an aligned WAV, then run:
+
+```bash
+ffmpeg -i original.mp4 -i cuecraft_take_1_aligned.wav \
+  -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k \
+  -af apad -shortest video_with_voiceover.mp4
+```
+
+This retains the source video without re-encoding, replaces its audio and pads missing audio to the video end. One-click edited video export is planned for a later release.
+
 
 ## Key commands
 
@@ -65,4 +92,4 @@ node --test tests/*.test.mjs
 
 See `AGENTS.md` and `DEVELOPMENT.md`. The app should remain functional by double-clicking `index.html`; a web server is optional.
 
-Roadmap: microphone capture, recording takes, voiceover alignment, audio export, completed-video export and optional local AI script assistance.
+Roadmap: multi-take editing and comping, synchronised take playback with the reference video, one-click completed-video export and optional local AI script assistance.
