@@ -38,4 +38,15 @@ Versioning: keep the repository entrypoint `index.html` and downloadable `CueCra
 - The source recording remains unchanged. Original download is raw; Trimmed WAV keeps selected samples and leading silence at the timeline location.
 - Review seeks/pause resume with media. Seeking outside the retained segment ends preview. Stop review clears audio, pauses and restores original video mute and controls.
 - Browser test with generated WAV and silent example MP4 must pass without JS errors.
-- Multi-take mixing and finished-video export remain future work.
+- Assembled audio export is implemented in v0.4.0; one-click finished-video rendering remains future work.
+
+## Cue recording, selection and assembly (v0.4.0)
+
+- Default to cue-based capture. Offer cue-range and continuous alternatives. The 0/2/3/5-second pre-roll plays **before** the recorder starts. Keep the **Stop take** button enabled while recording.
+- Stop cue/range capture at the selected cue boundary; keep video/scroll speed at 1× and lock transport while recording. `startAt` is in original media time.
+- Retain source recordings without destructive edits or silent FIFO eviction. Cap at 120 takes, with an explicit warning when reached.
+- Preferred-take selection is per cue, held in volatile memory. Never replace an existing user preference automatically. Discard invalid assignments when scripts or video change, while retaining the raw take downloads.
+- Join contiguous sections from a single range take before applying 12 ms fades. Different takes may be faded at their edges; preserve silent gaps and original timestamps.
+- Full assembled WAV is 44.1 kHz, 16-bit mono and limited to 15 minutes, with sample-rate interpolation. Decode blobs locally via Web Audio and close decoding contexts after use.
+- Browser acceptance: cue mode, cue range, uninterrupted mode, pre-roll timing, automatic cue-end stopping, stop button operability, preferred-take selection, assembled WAV, full preview and 390–1600 px layouts.
+- CI must pass before merging; microphone permissions still require real-device testing. Finished MP4 export remains external.

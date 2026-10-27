@@ -59,31 +59,31 @@ Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and pract
 **Important:** Word highlighting follows the timeline, not live speech. CueCraft trims takes non-destructively and previews them beside the video; mixing multiple takes or rendering a finished video is not yet included.
 
 
-## Record a narration take (v0.2.0)
+## Cue-by-cue recording and narration assembly (v0.4.0)
 
-1. Load a video, or use the three-slide guided demo. Timer-only mode also works.
-2. Under **Record voiceover**, select **From start**, **Current cue** or **Current position**.
-3. Press **● Record** and grant the browser microphone permission. CueCraft switches to **1× speed** and starts the teleprompter/video, with the reference video muted.
-4. Follow the text, then press **■ Stop take**. Recording also stops automatically when the video/timeline finishes.
-5. Listen to the source audio, or choose **Review + video** to preview a take against the original video, muted, at its saved position. Press **Stop review** when finished.
-6. Optionally set **Trim start** and **Trim end** (seconds removed from either side). Choose **Original** to keep the untouched recording or **Trimmed WAV** to export only the retained section, with leading silence positioning it on the video timeline. WAV is ready for an editor or FFmpeg.
+The default recording mode is **Individual cue**. Choose the current cue or any cue in the script, then press **Record selected**. CueCraft plays an optional 2-second video lead-in (0/2/3/5 seconds available) before recording starts, and stops the recording automatically at the cue end. Pre-roll video is **not included** in the audio take.
 
-**Take privacy:** audio and trim choices are only in browser memory until you explicitly download a file. Closing or refreshing the tab loses unsaved takes. To avoid memory growth, at most twelve takes remain available at once. CueCraft makes no uploads and requests microphone-only capture.
+You can record as many alternatives as necessary within the 120-take session cap. New takes are added without replacing existing recordings or overriding an earlier preferred take. Select the preferred take for each cue in **Narration assembly**; you can also click **★ Prefer for cue(s)** on a take to select it for all eligible cues.
 
-Seeking, pausing, cue editing and script import are intentionally locked during **recording**. During **review**, you can play, pause and seek within the kept segment; seeking outside it ends the preview. Video swapping and speed settings are locked during review. Use headphones to avoid capturing the reference audio. Browser recordings can have slight startup/codec latency, so check the final sync by listening. Recording requires browser microphone permission and a secure origin; trusted local files or localhost generally work, depending on your browser.
+Click **Review full narration** to play the assembled audio synchronized with the original video, or **Assemble WAV** to download a 44.1 kHz mono, 16-bit WAV aligned to the video's timeline. Unrecorded or underfilled cue intervals remain silent, so later sections never move forward. The app highlights timing gaps and out-of-window audio; tiny fades smooth boundaries between different takes.
 
-### Replace the soundtrack using FFmpeg (optional)
+**Selected cue range** mode lets you narrate several adjacent cues in one pass, retaining natural flow. The same take can supply several preferred-cue selections; the assembler joins adjacent slices of that take before applying fades. **Full / continuous recording** retains the existing uninterrupted narration workflow, including starting at the beginning, current cue or current playhead position.
 
-Download an aligned WAV, then run:
+Individual take review, non-destructive start/end trimming and native/aligned downloads remain available. The script and layout settings can be saved locally, but **recordings, trims, take selections and the assembled preview exist only in browser memory**. Download your work before refreshing or closing the tab. Cue/script or reference-video changes clear assignments for safety without deleting the source recordings.
+
+For memory safety, assembled WAV export is limited to 15 minutes of timeline duration (use individually aligned WAVs for longer projects), and the app refuses to silently discard takes once 120 have accumulated. A real microphone requires user permission in a secure browser context; use headphones and verify sync because audio startup latency and codecs vary by device.
+
+### Replace the video's original soundtrack
+
+After exporting the assembled audio:
 
 ```bash
-ffmpeg -i original.mp4 -i cuecraft_take_1_aligned.wav \
+ffmpeg -i original.mp4 -i cuecraft_narration_assembled.wav \
   -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k \
   -af apad -shortest video_with_voiceover.mp4
 ```
 
-This retains the source video without re-encoding, replaces its audio and pads missing audio to the video end. One-click edited video export is planned for a later release.
-
+CueCraft does not yet export the final MP4 directly. Keep the original footage unchanged until you have reviewed the audio alignment.
 
 ## Key commands
 
@@ -112,4 +112,4 @@ node --test tests/*.test.mjs
 
 See `AGENTS.md` and `DEVELOPMENT.md`. The app should remain functional by double-clicking `index.html`; a web server is optional.
 
-Roadmap: combine selected parts of several recordings into one audio mix, one-click completed-video export and optional local AI script assistance.
+Roadmap: waveform-assisted editing, sub-cue retakes, one-click video export and optional local AI assistance.

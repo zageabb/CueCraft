@@ -112,3 +112,44 @@ test('trimmed WAV has retained samples after aligned leading silence',async()=>{
  assert.equal(b.readUInt32LE(40),2*(Math.round(2.1*8000)+2400));
  assert.equal(b.readInt16LE(44),0);assert.equal(b.readInt16LE(44+Math.round(2.1*8000)*2),16384);
 });
+
+
+test('v0.4 cue-recording UI and entry points exist',()=>{
+ assert.match(html, /meta name="app-version" content="0\.4\.0"/);
+ for(const id of ['recordMode','recordCue','rangeStart','rangeEnd','recordPreroll','assemblyList','assemblyWarnings','previewAssemblyBtn','exportAssemblyBtn'])assert.match(html,new RegExp('id="'+id+'"'));
+ for(const fn of ['recordingTarget','beginCapture','buildAssemblyPlan','renderAssembly','assembleSamples','assembledWav','runAssembly'])assert.match(html,new RegExp('function '+fn+'\\('));
+ assert.match(html,/MAX_TAKES=120/);
+ assert.doesNotMatch(html,/takes\.pop\(\)/);
+ assert.match(html,/finally\{recordStarting=false;els.recordBtn.disabled=false;\}/);
+});
+test('v0.4 cue/range/continuous target semantics preserve cue timecodes',()=>{
+ const source=html.match(/function recordingTarget\(\)\{[\s\S]*?^\}/m)?.[0];assert.ok(source);
+ const c=[{start:0,end:14,text:'a',title:'one'},{start:14,end:30,text:'b',title:'two'},{start:30,end:46,text:'c',title:'three'}];
+ const els={recordMode:{value:'cue'},recordCue:{value:'1'},rangeStart:{value:'0'},rangeEnd:{value:'2'},recordFrom:{value:'start'},recordPreroll:{value:'3'},video:{}};
+ const cx=vm.createContext({cues:c,els,clock:0,duration:46,offset:0,videoURL:null,clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),currentAt:t=>t<14?0:t<30?1:2,cueSignature:c=>JSON.stringify([c.start,c.end,c.title,c.text])});
+ vm.runInContext(source,cx);
+ const cue=vm.runInContext('recordingTarget()',cx);assert.equal(cue.requested,14);assert.equal(cue.endAt,30);assert.equal(cue.lead,3);
+ els.recordMode.value='range';const range=vm.runInContext('recordingTarget()',cx);assert.equal(range.endAt,46);assert.equal(range.last,2);
+ els.rangeStart.value='2';els.rangeEnd.value='0';assert.throws(()=>vm.runInContext('recordingTarget()',cx),/last cue/);
+ els.recordMode.value='continuous';const full=vm.runInContext('recordingTarget()',cx);assert.equal(full.endAt,46);assert.equal(full.lead,0);
+});
+test('v0.4 assembly merges contiguous source and warns about unselected cues',()=>{
+ const extract=name=>{const f=html.match(new RegExp('function '+name+'\\([^]*?^\\}','m'))?.[0];assert.ok(f,name);return f;};
+ const ctx=vm.createContext({fmt:t=>String(t),clamp:(v,a,b)=>Math.max(a,Math.min(b,v))});
+ for(const fn of ['clipBounds','cueSignature','buildAssemblyPlan'])vm.runInContext(extract(fn),ctx);
+ const cues=[{start:0,end:10,title:'A',text:'a'},{start:10,end:20,title:'B',text:'b'},{start:25,end:30,title:'C',text:'c'}];
+ const key=i=>JSON.stringify([cues[i].start,cues[i].end,cues[i].title,cues[i].text]);
+ const take={number:1,startAt:0,length:20,trimStart:0,trimEnd:0,mode:'range',cueSignatures:{0:key(0),1:key(1)}};
+ const full=vm.runInContext('buildAssemblyPlan(cues,takes,picks,0)',vm.createContext({...ctx,cues,takes:[take],picks:{0:1,1:1}}));
+ assert.equal(full.complete,2);assert.equal(full.segments.length,1);assert.equal(full.segments[0].end,20);assert.match(full.warnings.join(' '),/Cue 3/);
+});
+test('v0.4 audio assembly preserves silent timeline windows',()=>{
+ const source=html.match(/function assembleSamples\([^]*?^\}/m)?.[0];assert.ok(source);
+ const audio=new Float32Array(8000).fill(.5),decoded={sampleRate:8000,length:8000,numberOfChannels:1,getChannelData:()=>audio};
+ const seg={take:{number:1},start:.2,end:.6,sourceStart:0,sourceEnd:.4};
+ const context=vm.createContext({MAX_ASSEMBLY_SECONDS:900,clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),seg,decoded});
+ vm.runInContext(source,context);
+ const result=vm.runInContext('assembleSamples({segments:[seg]},new Map([[1,decoded]]),8000,8000)',context);
+ assert.equal(result[500],0);assert.ok(Math.abs(result[3000]-.5)<1e-5);assert.equal(result[6000],0);
+ assert.throws(()=>vm.runInContext('assembleSamples({segments:[]},new Map(),7200001,8000)',context),/15-minute/);
+});

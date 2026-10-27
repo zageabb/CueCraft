@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="application-name" content="CueCraft">
-<meta name="app-version" content="0.3.0">
+<meta name="app-version" content="0.4.0">
 <title>CueCraft — Teleprompter & Voiceover Studio</title>
 <style>
 :root{--bg:#0b1119;--panel:#101a27;--panel2:#152233;--border:#28394d;--text:#eff7fc;--muted:#98a9bc;--accent:#66d5d6;--accent2:#ffcb7c;--reading-size:49px;--shadow:0 16px 40px #03071075}
@@ -56,6 +56,24 @@ button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small
 .demo-frame .demo-caption{font-size:11px;color:#c0d7e1;line-height:1.4}
 @media(max-width:1250px){.demo-frame{padding:9px 11px}.demo-frame .demo-title{font-size:clamp(16px,2.2vw,25px)}}
 
+/* v0.4.0: cue-based recording and non-destructive assembly */
+.record-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.record-mode-grid .wide{grid-column:1/-1}
+.record-mode-grid label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:11px;font-weight:650}
+.record-mode-grid select{min-width:0;width:100%}
+.record-mode-grid [hidden]{display:none !important}
+.record-preroll{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;color:var(--muted)}
+.record-preroll select{min-width:95px}
+.assembly-wrap{padding:12px 13px;display:flex;flex-direction:column;gap:10px}
+.assembly-actions{display:flex;gap:7px;flex-wrap:wrap}.assembly-actions button{flex:1}
+.assembly-summary{font-size:12px;color:#c4e5e6;font-weight:750}
+.assembly-warnings{font-size:11px;line-height:1.45;color:#e9cc9b;max-height:105px;overflow-y:auto}
+.assembly-list{max-height:230px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.assembly-cue{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:7px;align-items:center;padding:7px;background:#0b1925;border:1px solid #293b4c;border-radius:8px}
+.assembly-cue strong{font-size:11px;color:#c9dde9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assembly-cue small{font-size:10px;color:var(--muted);display:block;margin-top:3px}
+.assembly-cue select{min-width:0;width:100%}
+.take-card .preferred{border-color:#458c83;background:#142c2d}
 /* Voiceover capture and synchronised take preview */
 .side > .side-panel:first-child{position:sticky;top:0;z-index:5;box-shadow:0 8px 15px #050c1688}
 @media(max-width:980px){.side > .side-panel:first-child{position:relative;top:auto;box-shadow:none}}
@@ -105,15 +123,30 @@ button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small
     <div class="side-panel record-panel" aria-label="Microphone recording">
       <div class="side-title">Record voiceover <small id="recordAvailability">Local microphone</small></div>
       <div class="record-wrap">
-        <div class="record-head">
-          <select class="field" id="recordFrom" aria-label="Start recording from"><option value="start">From start</option><option value="cue">Current cue</option><option value="here">Current position</option></select>
-          <button id="recordBtn" class="primary" title="Record microphone narration while the timeline plays">● Record</button>
+        <div class="record-mode-grid">
+          <label class="wide">Recording mode<select class="field" id="recordMode"><option value="cue" selected>Individual cue (recommended)</option><option value="range">Selected cue range</option><option value="continuous">Full / continuous recording</option></select></label>
+          <label class="wide" id="recordCueWrap">Cue to record<select class="field" id="recordCue"><option value="current">Current cue</option></select></label>
+          <label id="rangeStartWrap" hidden>From cue<select class="field" id="rangeStart"></select></label>
+          <label id="rangeEndWrap" hidden>Through cue<select class="field" id="rangeEnd"></select></label>
+          <label class="wide" id="continuousWrap" hidden>Starting position<select class="field" id="recordFrom" aria-label="Start recording from"><option value="start">From start</option><option value="cue">Current cue</option><option value="here">Current position</option></select></label>
         </div>
+        <div class="record-preroll"><label for="recordPreroll">Video lead-in before cue/range</label><select class="field" id="recordPreroll"><option value="0">None</option><option value="2" selected>2 seconds</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select></div>
+        <div class="record-head"><button id="recordBtn" class="primary" title="Record microphone narration while the timeline plays">● Record selected</button></div>
         <div id="recordState" class="record-state" role="status">Ready to record. Your video stays on this device.</div>
         <div id="reviewStatus" class="review-status" role="status"><span id="reviewLabel">Synchronized preview</span><button id="stopReviewBtn" class="tiny" type="button">■ Stop review</button></div>
         <audio id="reviewAudio" preload="metadata" hidden></audio>
         <div id="takeList" class="take-list" aria-label="Recorded takes"></div>
-        <div class="record-tip">Recording starts at 1× speed. Seeking and pausing are locked during capture. Headphones recommended. Takes stay in memory until downloaded.</div>
+        <div class="record-tip">Cue mode stops at the cue boundary. Pre-roll plays silently before the microphone take begins. Headphones recommended. Takes stay only in browser memory; download them before closing this tab.</div>
+      </div>
+    </div>
+    <div class="side-panel assembly-panel" aria-label="Assemble narration">
+      <div class="side-title">Narration assembly <small id="assemblyCount">0 / 3 selected</small></div>
+      <div class="assembly-wrap">
+        <div class="assembly-summary" id="assemblySummary">Record cues and choose the best take for each.</div>
+        <div class="assembly-list" id="assemblyList" aria-label="Preferred takes per cue"></div>
+        <div id="assemblyWarnings" class="assembly-warnings" role="status"></div>
+        <div class="assembly-actions"><button id="previewAssemblyBtn" class="tiny">▶ Review full narration</button><button id="exportAssemblyBtn" class="tiny primary">↧ Assemble WAV</button></div>
+        <div class="record-tip">Selections and audio exist only in this browser tab. Unrecorded cues become silence; later cues retain their video timestamps.</div>
       </div>
     </div>
     <div class="side-panel cue-panel"><div class="side-title">Script timeline <small id="cueCounter">3 cues</small></div><div id="cueList" class="cue-list"></div></div>
@@ -143,10 +176,12 @@ button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small
 const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
 document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 const ORIGINAL_CUES = [{"id": 1, "start": 0, "end": 14, "title": "Welcome", "text": "Welcome to CueCraft. This is your teleprompter workspace. Load a video, follow the highlighted words, or simply rehearse with the built-in timer.", "note": "Opening frame, or introduce your presentation"}, {"id": 2, "start": 14, "end": 30, "title": "Synchronise your script", "text": "Each section has a start and end time, so the words can follow your original footage. You can edit a cue, jump to another section, and adjust the reading speed whenever you need.", "note": "Demonstrate video, timeline and cue editor"}, {"id": 3, "start": 30, "end": 46, "title": "Save and reuse", "text": "Import or export scripts as JSON or CSV, and bring in existing subtitle timing from SRT files. Your content stays on your computer, and you can use this tool without an internet connection.", "note": "Show script import/export controls"}];
-const els={};for(const id of ['modeLabel','globalClock','sectionIndex','sectionTitle','rangeLabel','paceLabel','stage','stageClock','stageRemaining','readerTrack','stageSource','nextTitle','nextExcerpt','nextTime','video','videoPlaceholder','videoHint','videoFilename','demoBtn','demoFrame','demoCount','demoTitle','demoCaption','videoFile','loadVideoBtn','removeVideoBtn','audioRow','muteBtn','cueList','cueCounter','noteHeading','noteContent','progress','progressFill','playBtn','backBtn','forwardBtn','restartBtn','fullscreenBtn','speed','font','offset','mirrorBtn','importBtn','importFile','exportBtn','editBtn','editor','modalTitle','editTitle','editNote','editStart','editEnd','editText','editorError','editorPrevBtn','editorNextBtn','cancelEditBtn','saveEditBtn','resetScriptBtn','recordFrom','recordBtn','recordState','recordAvailability','takeList','reviewStatus','reviewLabel','stopReviewBtn','reviewAudio','toast','layoutDivider']) els[id]=document.getElementById(id);
+const els={};for(const id of ['modeLabel','globalClock','sectionIndex','sectionTitle','rangeLabel','paceLabel','stage','stageClock','stageRemaining','readerTrack','stageSource','nextTitle','nextExcerpt','nextTime','video','videoPlaceholder','videoHint','videoFilename','demoBtn','demoFrame','demoCount','demoTitle','demoCaption','videoFile','loadVideoBtn','removeVideoBtn','audioRow','muteBtn','cueList','cueCounter','noteHeading','noteContent','progress','progressFill','playBtn','backBtn','forwardBtn','restartBtn','fullscreenBtn','speed','font','offset','mirrorBtn','importBtn','importFile','exportBtn','editBtn','editor','modalTitle','editTitle','editNote','editStart','editEnd','editText','editorError','editorPrevBtn','editorNextBtn','cancelEditBtn','saveEditBtn','resetScriptBtn','recordFrom','recordBtn','recordState','recordAvailability','takeList','recordMode','recordCue','recordCueWrap','rangeStart','rangeEnd','rangeStartWrap','rangeEndWrap','continuousWrap','recordPreroll','assemblyList','assemblyCount','assemblySummary','assemblyWarnings','previewAssemblyBtn','exportAssemblyBtn','reviewStatus','reviewLabel','stopReviewBtn','reviewAudio','toast','layoutDivider']) els[id]=document.getElementById(id);
 const STORE='cuecraft-cues-v1';const SETTINGS='cuecraft-settings-v1';
 let cues=clone(ORIGINAL_CUES),duration=46,clock=0,playing=false,lastTick=0,videoURL=null,demoMode=false,offset=0,speed=1,mirrored=false,activeIndex=-1,lastHighlight=-1,editingIndex=0,toastTimer=0,trackMeasured=false;
 let recordingSession=null,recordStarting=false,takes=[],nextTake=1,reviewSession=null;
+const MAX_TAKES=120, MAX_ASSEMBLY_SECONDS=900;
+let preferredTakes={},assemblyPreviewUrl=null,assemblyPreviewTake=null,assemblyBusy=false;
 let videoColumnRatio=.39;
 
 function clone(x){return JSON.parse(JSON.stringify(x));}
@@ -165,30 +200,44 @@ function persist(){try{localStorage.setItem(STORE,JSON.stringify(cues));}catch(e
 function persistSettings(){try{localStorage.setItem(SETTINGS,JSON.stringify({speed,font:els.font.value,offset,mirrored,videoColumnRatio}));}catch(e){}}
 function loadStored(){try{const raw=localStorage.getItem(STORE);if(raw)cues=validate(JSON.parse(raw));const s=JSON.parse(localStorage.getItem(SETTINGS)||'{}');if([.75,.85,1,1.1,1.25].includes(Number(s.speed)))speed=Number(s.speed);if(['34','49','64','78'].includes(String(s.font)))els.font.value=String(s.font);offset=clamp(Number(s.offset)||0,-60,60);mirrored=!!s.mirrored;if(Number.isFinite(Number(s.videoColumnRatio)))videoColumnRatio=clamp(Number(s.videoColumnRatio),.3,.56);}catch(err){console.warn('Could not load local settings',err);}}
 function renderTrack(){const frag=document.createDocumentFragment();for(const [i,c] of cues.entries()){const article=e('article','cue-block');article.dataset.index=i;article.append(e('h2','',`${pad2(i+1)} / ${c.title} · ${fmt(c.start)}`));const p=e('p');const split=c.text.match(/\S+\s*/g)||[];for(let j=0;j<split.length;j++){const s=e('span','word todo',split[j]);s.dataset.word=j;p.append(s);}article.append(p);frag.append(article);}els.readerTrack.replaceChildren(frag);els.readerTrack.style.transform='translate3d(0,0,0)';trackMeasured=false;}
-function renderList(){const frag=document.createDocumentFragment();cues.forEach((c,i)=>{const b=e('button','cue-item');b.type='button';b.dataset.index=i;const n=e('span','cue-num',pad2(i+1));const details=e('span','cue-info');details.append(e('div','cue-heading',c.title),e('div','cue-time',`${fmt(c.start)} – ${fmt(c.end)}`));b.append(n,details);b.addEventListener('click',()=>seek(c.start));frag.append(b);});els.cueList.replaceChildren(frag);els.cueCounter.textContent=`${cues.length} cues`;}
+function renderList(){const frag=document.createDocumentFragment();cues.forEach((c,i)=>{const b=e('button','cue-item');b.type='button';b.dataset.index=i;const n=e('span','cue-num',pad2(i+1));const details=e('span','cue-info');details.append(e('div','cue-heading',c.title),e('div','cue-time',`${fmt(c.start)} – ${fmt(c.end)}`));b.append(n,details);b.addEventListener('click',()=>seek(c.start));frag.append(b);});els.cueList.replaceChildren(frag);els.cueCounter.textContent=`${cues.length} cues`;refreshRecordCueOptions();renderAssembly();}
 function setActive(i){activeIndex=i;const c=cues[i],n=cues[i+1];els.sectionIndex.textContent=`CUE ${pad2(i+1)} / ${pad2(cues.length)}`;els.sectionTitle.textContent=c.title;els.rangeLabel.textContent=`${fmt(c.start)} – ${fmt(c.end)}`;const w=words(c.text).length;els.paceLabel.textContent=`Target pace ${Math.round(w*60/(c.end-c.start))} words/min`;els.noteHeading.textContent=c.title;els.noteContent.textContent=c.note||'No screen cue supplied';els.nextTitle.textContent=n?n.title:'End of demonstration';els.nextExcerpt.textContent=n?(n.text.length>110?n.text.slice(0,107)+'…':n.text):'All narration complete';els.nextTime.textContent=n?fmt(n.start):'—';const blocks=els.readerTrack.children;for(let j=0;j<blocks.length;j++)blocks[j].className='cue-block '+(j===i?'active':j<i?'earlier':'later');for(const btn of els.cueList.children){btn.classList.toggle('current-item',Number(btn.dataset.index)===i);btn.setAttribute('aria-current',Number(btn.dataset.index)===i?'true':'false');}const selected=els.cueList.children[i];if(selected){const parent=els.cueList;const t=selected.offsetTop-parent.offsetTop;if(t<parent.scrollTop||t+selected.offsetHeight>parent.scrollTop+parent.clientHeight)parent.scrollTo({top:Math.max(0,t-parent.clientHeight*.25),behavior:'smooth'});}lastHighlight=-1;}
 function applyWordHighlight(i,t){const c=cues[i],p=cueProgress(c,t);const block=els.readerTrack.children[i];if(!block)return;const spans=block.querySelectorAll('.word');const current=clamp(Math.floor(spans.length*p),0,spans.length);if(lastHighlight===current)return;lastHighlight=current;for(let j=0;j<spans.length;j++){spans[j].className='word '+(j<current?'done':j===current?'current':'todo');}}
 function positionTrack(i,t){const blocks=els.readerTrack.children;if(!blocks.length)return;const c=cues[i],p=cueProgress(c,t),here=blocks[i],next=blocks[i+1];if(!here)return;const hereTop=here.offsetTop,nextTop=next?next.offsetTop:here.offsetTop+here.offsetHeight*.45;const target=hereTop+(nextTop-hereTop)*p;const line=els.stage.clientHeight*.27;els.readerTrack.style.transform=`translate3d(0,${Math.round(line-target)}px,0) ${mirrored?'scaleX(-1)':''}`;}
 function renderFrame(){const t=videoURL?els.video.currentTime+offset:clock;const safe=clamp(t,0,duration);const i=currentAt(safe);if(i!==activeIndex)setActive(i);const c=cues[i];els.globalClock.innerHTML=`${fmt(safe)} <small>/ ${fmt(duration)}</small>`;els.stageClock.textContent=fmt(safe);els.stageRemaining.innerHTML=`CUE ENDS IN <b>${fmt(Math.max(0,c.end-safe))}</b>`;els.progressFill.style.width=`${clamp(safe/duration*100,0,100)}%`;els.progress.setAttribute('aria-valuenow',String(Math.round(safe)));els.progress.setAttribute('aria-valuetext',fmt(safe));els.stageSource.textContent=reviewSession?'REVIEWING REPLACEMENT NARRATION':videoURL?'LOCKED TO VIDEO PLAYBACK':demoMode?'GUIDED DEMO TIMELINE':'INTERNAL TIMELINE';if(demoMode)renderDemoSlide(clock);applyWordHighlight(i,safe);positionTrack(i,safe);const vActive=!!videoURL;els.modeLabel.textContent=reviewSession?'● TAKE REVIEW':vActive?'● VIDEO SYNC':demoMode?'● GUIDED DEMO':'● TIMER MODE';els.modeLabel.classList.toggle('video',vActive);const isPlaying=vActive?!els.video.paused:playing;els.playBtn.textContent=isPlaying?'❚❚ Pause':'▶ Play';}
-function tick(ts){if(!lastTick)lastTick=ts;const dt=clamp((ts-lastTick)/1000,0,.1);lastTick=ts;if(!videoURL&&playing){clock=Math.min(duration,recordingSession?recordingSession.scriptStart+(performance.now()-recordingSession.started)/1000:clock+dt*speed);if(clock>=duration){playing=false;if(recordingSession)stopRecording();else toast('End of narration.');}}renderFrame();syncReviewToTimeline();requestAnimationFrame(tick);}
+function tick(ts){
+ if(!lastTick)lastTick=ts;const dt=clamp((ts-lastTick)/1000,0,.1);lastTick=ts;
+ if(!videoURL&&playing){
+  const session=recordingSession;
+  clock=Math.min(duration,session?.phase==='recording'?session.scriptStart+(performance.now()-session.started)/1000:clock+dt*speed);
+  if(clock>=duration){playing=false;if(session)stopRecording();else toast('End of narration.');}
+ }
+ const session=recordingSession;
+ if(session&&!session.stopping){
+  const t=videoURL?els.video.currentTime+offset:clock;
+  if(session.phase==='preroll'&&t>=session.requested-.035)beginCapture(session);
+  else if(session.phase==='recording'&&t>=session.endAt-.025)stopRecording();
+ }
+ renderFrame();syncReviewToTimeline();requestAnimationFrame(tick);
+}
 function playPause(){if(recordingSession||recordStarting){toast('Stop the recording before changing playback.');return;}if(videoURL){if(els.video.paused){const p=els.video.play();if(p&&p.catch)p.catch(()=>toast('The browser could not play this video. Try MP4 (H.264).'));}else els.video.pause();}else{if(clock>=duration)clock=0;playing=!playing;}}
 function seek(t){if(recordingSession||recordStarting)return;if(videoURL){const max=Number.isFinite(els.video.duration)?els.video.duration:duration;els.video.currentTime=clamp(t-offset,0,max);}else clock=clamp(t,0,duration);renderFrame();syncReviewToTimeline();}
 function restart(){if(recordingSession||recordStarting)return;seek(0);if(videoURL)els.video.pause();else playing=false;}
 function renderDemoSlide(t){const slides=[['Read with confidence','Follow the reading line and highlighted wording'],['Synchronise your narration','Keep your voiceover aligned with each section'],['Save and reuse','Export scripts and keep your work private']];const slide=t<14?0:t<30?1:2;els.demoCount.textContent=`${pad2(slide+1)} / 03`;els.demoTitle.textContent=slides[slide][0];els.demoCaption.textContent=slides[slide][1];}
 function stopDemo(){demoMode=false;els.demoFrame.style.display='none';els.demoBtn.textContent='▶ Try demo';if(!videoURL){els.videoPlaceholder.style.display='';els.videoHint.textContent='Optional';els.videoFilename.textContent='No video loaded';}}
-function toggleDemo(){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(demoMode){stopDemo();restart();renderFrame();return;}if(JSON.stringify(cues)!==JSON.stringify(ORIGINAL_CUES)&&!confirm('Replace your current script with the three-cue tutorial? Export any edits first.'))return;if(videoURL)removeVideo();cues=clone(ORIGINAL_CUES);persist();updateDuration();renderTrack();renderList();activeIndex=-1;demoMode=true;els.videoPlaceholder.style.display='none';els.demoFrame.style.display='flex';els.demoBtn.textContent='Close demo';els.videoHint.textContent='Guided example';els.videoFilename.textContent='Three sample slides • 46 seconds';restart();toast('Guided example ready. Press Play or Space.');renderFrame();}
-function setVideo(file){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(!file)return;if(demoMode)stopDemo();if(videoURL)URL.revokeObjectURL(videoURL);videoURL=URL.createObjectURL(file);playing=false;els.video.pause();els.video.src=videoURL;els.video.currentTime=0;els.video.playbackRate=speed;els.video.load();els.video.classList.add('visible');els.videoPlaceholder.style.display='none';els.videoFilename.textContent=file.name;els.video.title=file.name;els.videoHint.textContent='Timecode linked';els.removeVideoBtn.style.display='';els.audioRow.style.display='flex';els.video.muted=true;els.muteBtn.textContent='Muted ✓';toast('Video loaded. Prompts now follow the video time.');renderFrame();}
-function removeVideo(){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(!videoURL)return;const t=els.video.currentTime+offset;els.video.pause();els.video.removeAttribute('src');els.video.load();URL.revokeObjectURL(videoURL);videoURL=null;els.video.classList.remove('visible');els.videoPlaceholder.style.display='';els.videoFilename.textContent='No video loaded';els.videoHint.textContent='Optional';els.removeVideoBtn.style.display='none';els.audioRow.style.display='none';updateDuration();clock=clamp(t,0,duration);playing=false;toast('Timer-only mode restored.');renderFrame();}
+function toggleDemo(){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(demoMode){stopDemo();restart();renderFrame();return;}if(JSON.stringify(cues)!==JSON.stringify(ORIGINAL_CUES)&&!confirm('Replace your current script with the three-cue tutorial? Export any edits first.'))return;if(videoURL)removeVideo();cues=clone(ORIGINAL_CUES);clearAssignments("Demo reset.");persist();updateDuration();renderTrack();renderList();activeIndex=-1;demoMode=true;els.videoPlaceholder.style.display='none';els.demoFrame.style.display='flex';els.demoBtn.textContent='Close demo';els.videoHint.textContent='Guided example';els.videoFilename.textContent='Three sample slides • 46 seconds';restart();toast('Guided example ready. Press Play or Space.');renderFrame();}
+function setVideo(file){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(!file)return;clearAssignments("Reference video changed.");if(demoMode)stopDemo();if(videoURL)URL.revokeObjectURL(videoURL);videoURL=URL.createObjectURL(file);playing=false;els.video.pause();els.video.src=videoURL;els.video.currentTime=0;els.video.playbackRate=speed;els.video.load();els.video.classList.add('visible');els.videoPlaceholder.style.display='none';els.videoFilename.textContent=file.name;els.video.title=file.name;els.videoHint.textContent='Timecode linked';els.removeVideoBtn.style.display='';els.audioRow.style.display='flex';els.video.muted=true;els.muteBtn.textContent='Muted ✓';toast('Video loaded. Prompts now follow the video time.');renderFrame();}
+function removeVideo(){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();if(!videoURL)return;clearAssignments("Reference video removed.");const t=els.video.currentTime+offset;els.video.pause();els.video.removeAttribute('src');els.video.load();URL.revokeObjectURL(videoURL);videoURL=null;els.video.classList.remove('visible');els.videoPlaceholder.style.display='';els.videoFilename.textContent='No video loaded';els.videoHint.textContent='Optional';els.removeVideoBtn.style.display='none';els.audioRow.style.display='none';updateDuration();clock=clamp(t,0,duration);playing=false;toast('Timer-only mode restored.');renderFrame();}
 function openEditor(idx=activeIndex){if(recordingSession||recordStarting)return;if(reviewSession)stopSyncReview();editingIndex=clamp(idx,0,cues.length-1);fillEditor();els.editor.classList.add('open');els.editText.focus();}
 function fillEditor(){const c=cues[editingIndex];els.modalTitle.textContent=`Edit cue ${pad2(editingIndex+1)} / ${pad2(cues.length)}`;els.editTitle.value=c.title;els.editNote.value=c.note;els.editStart.value=fmt(c.start);els.editEnd.value=fmt(c.end);els.editText.value=c.text;els.editorError.textContent='';els.editorPrevBtn.disabled=editingIndex===0;els.editorNextBtn.disabled=editingIndex===cues.length-1;}
-function saveEditor(){const c={...cues[editingIndex],title:els.editTitle.value.trim(),note:els.editNote.value.trim(),start:parseTime(els.editStart.value),end:parseTime(els.editEnd.value),text:els.editText.value.trim()};try{if(editingIndex>0&&c.start<cues[editingIndex-1].end-.001)throw Error('Start time overlaps the preceding cue.');if(editingIndex<cues.length-1&&c.end>cues[editingIndex+1].start+.001)throw Error('End time overlaps the following cue.');const test=clone(cues);test[editingIndex]=c;validate(test);cues[editingIndex]=c;persist();updateDuration();renderTrack();renderList();activeIndex=-1;renderFrame();els.editorError.textContent='';toast(`Cue ${editingIndex+1} updated and saved.`);return true;}catch(err){els.editorError.textContent=err.message;return false;}}
+function saveEditor(){const c={...cues[editingIndex],title:els.editTitle.value.trim(),note:els.editNote.value.trim(),start:parseTime(els.editStart.value),end:parseTime(els.editEnd.value),text:els.editText.value.trim()};try{if(editingIndex>0&&c.start<cues[editingIndex-1].end-.001)throw Error('Start time overlaps the preceding cue.');if(editingIndex<cues.length-1&&c.end>cues[editingIndex+1].start+.001)throw Error('End time overlaps the following cue.');const test=clone(cues);test[editingIndex]=c;validate(test);cues[editingIndex]=c;clearAssignments("Cue text or time changed.");persist();updateDuration();renderTrack();renderList();activeIndex=-1;renderFrame();els.editorError.textContent='';toast(`Cue ${editingIndex+1} updated and saved.`);return true;}catch(err){els.editorError.textContent=err.message;return false;}}
 function closeEditor(){els.editor.classList.remove('open');}
 function showSave(fileName,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=fileName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 function csvEscape(v){const s=String(v??'');return /[",\r\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
 function csvString(list){return ['cue_number,start_time,end_time,duration_seconds,section,voiceover_text,screen_cue,words,words_per_minute',...list.map(c=>{const w=words(c.text).length;const d=c.end-c.start;return [c.id,c.start>=3600?fmt(c.start):'00:'+fmt(c.start),c.end>=3600?fmt(c.end):'00:'+fmt(c.end),d.toFixed(1),c.title,c.text,c.note,w,(w*60/d).toFixed(1)].map(csvEscape).join(',');})].join('\r\n');}
 function parseCSV(source){const rows=[];let row=[],field='',quote=false;const content=source.replace(/^\ufeff/,'');for(let i=0;i<content.length;i++){const char=content[i];if(quote){if(char==='"'&&content[i+1]==='"'){field+='"';i++;}else if(char==='"')quote=false;else field+=char;}else{if(char==='"')quote=true;else if(char===','){row.push(field);field='';}else if(char==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}else field+=char;}}if(quote)throw Error('CSV contains an unmatched quote.');if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row);}const keys=rows.shift()?.map(s=>s.trim().toLowerCase());if(!keys)throw Error('CSV has no headings.');return rows.filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(keys.map((k,i)=>[k,r[i]??''])));}
 function parseSRT(source){const entries=source.replace(/\r/g,'').replace(/^\ufeff/,'').trim().split(/\n\s*\n/);return entries.map((block,i)=>{const lines=block.split('\n');const timingIndex=lines.findIndex(x=>x.includes('-->'));if(timingIndex<0)throw Error(`Missing timecode in subtitle ${i+1}.`);const parts=lines[timingIndex].split(/\s*-->\s*/);return {start:parseTime(parts[0]),end:parseTime(parts[1]),title:`Section ${i+1}`,text:lines.slice(timingIndex+1).join(' ').trim(),note:''};});}
-function importScript(file){if(recordingSession||recordStarting)return;const reader=new FileReader();reader.onload=()=>{try{const content=String(reader.result),name=file.name.toLowerCase();let raw;if(name.endsWith('.csv'))raw=parseCSV(content);else if(name.endsWith('.srt'))raw=parseSRT(content);else{raw=JSON.parse(content);if(raw&&Array.isArray(raw.cues))raw=raw.cues;}const loaded=validate(raw);if(!confirm(`Replace the current script with ${loaded.length} imported cues?\n\nYou can restore the starter script later.`))return;if(demoMode)stopDemo();cues=loaded;persist();updateDuration();renderTrack();renderList();activeIndex=-1;restart();toast(`Imported ${cues.length} narration cues.`);}catch(err){toast('Import error: '+err.message);}};reader.onerror=()=>toast('Could not read this file.');reader.readAsText(file);}
+function importScript(file){if(recordingSession||recordStarting)return;const reader=new FileReader();reader.onload=()=>{try{const content=String(reader.result),name=file.name.toLowerCase();let raw;if(name.endsWith('.csv'))raw=parseCSV(content);else if(name.endsWith('.srt'))raw=parseSRT(content);else{raw=JSON.parse(content);if(raw&&Array.isArray(raw.cues))raw=raw.cues;}const loaded=validate(raw);if(!confirm(`Replace the current script with ${loaded.length} imported cues?\n\nYou can restore the starter script later.`))return;if(demoMode)stopDemo();cues=loaded;clearAssignments("Script replaced.");persist();updateDuration();renderTrack();renderList();activeIndex=-1;restart();toast(`Imported ${cues.length} narration cues.`);}catch(err){toast('Import error: '+err.message);}};reader.onerror=()=>toast('Could not read this file.');reader.readAsText(file);}
 // The layout width is a proportion of the available viewport, not a fixed pixel width.
 // A proportion survives switching between external monitor and laptop screen sizes.
 function layoutLimits(){const bounds=document.querySelector('.shell').getBoundingClientRect();const padding=parseFloat(getComputedStyle(els.layoutDivider.parentElement).paddingLeft)||0;const available=bounds.width-padding*2;return {available,min:Math.min(.56,340/Math.max(1,available)),max:Math.min(.56,840/Math.max(1,available))};}
@@ -204,13 +253,13 @@ function bindLayoutDivider(){const divider=els.layoutDivider;const shell=divider
  window.addEventListener('resize',()=>{setVideoColumnRatio(videoColumnRatio,false);});
  setVideoColumnRatio(videoColumnRatio,false);
 }
-function bind(){els.playBtn.addEventListener('click',playPause);els.backBtn.addEventListener('click',()=>seek((videoURL?els.video.currentTime+offset:clock)-5));els.forwardBtn.addEventListener('click',()=>seek((videoURL?els.video.currentTime+offset:clock)+5));els.restartBtn.addEventListener('click',restart);els.fullscreenBtn.addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen();else if(els.stage.requestFullscreen)els.stage.requestFullscreen().catch(()=>toast('Full screen is not available in this browser.'));});els.speed.value=String(speed);els.speed.addEventListener('change',()=>{if(reviewSession){els.speed.value='1';return;}speed=Number(els.speed.value);els.video.playbackRate=speed;persistSettings();});els.font.addEventListener('change',()=>{document.documentElement.style.setProperty('--reading-size',`${els.font.value}px`);persistSettings();renderFrame();});els.offset.value=String(offset);els.offset.addEventListener('change',()=>{if(reviewSession){els.offset.value=String(offset);return;}offset=clamp(Number(els.offset.value)||0,-60,60);els.offset.value=String(offset);persistSettings();renderFrame();});els.mirrorBtn.addEventListener('click',()=>{mirrored=!mirrored;els.mirrorBtn.classList.toggle('primary',mirrored);persistSettings();renderFrame();});els.demoBtn.addEventListener('click',toggleDemo);els.loadVideoBtn.addEventListener('click',()=>els.videoFile.click());els.videoFile.addEventListener('change',()=>{setVideo(els.videoFile.files[0]);els.videoFile.value='';});els.removeVideoBtn.addEventListener('click',removeVideo);els.muteBtn.addEventListener('click',()=>{if(reviewSession){toast('Original audio stays muted during take review.');return;}els.video.muted=!els.video.muted;els.muteBtn.textContent=els.video.muted?'Muted ✓':'Audio on';});els.video.addEventListener('loadedmetadata',()=>{updateDuration();renderFrame();});els.video.addEventListener('ended',()=>{if(recordingSession)stopRecording();else if(reviewSession)stopSyncReview(false);else toast('Video finished.');renderFrame();});els.video.addEventListener('pause',()=>{if(recordingSession&&!recordingSession.stopping&&els.video.currentTime<els.video.duration-.15){stopRecording();toast('Video paused. The take was stopped to avoid losing sync.');}});els.video.addEventListener('error',()=>{if(videoURL)toast('Unable to decode video. Convert it to an MP4 with H.264 video and AAC audio.');});els.progress.addEventListener('click',evt=>{const r=els.progress.getBoundingClientRect();seek(duration*clamp((evt.clientX-r.left)/r.width,0,1));});els.progress.addEventListener('keydown',evt=>{if(['ArrowLeft','ArrowRight'].includes(evt.key)){evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)+(evt.key==='ArrowRight'?5:-5));}});els.editBtn.addEventListener('click',()=>openEditor());els.cancelEditBtn.addEventListener('click',closeEditor);els.saveEditBtn.addEventListener('click',()=>{if(saveEditor())closeEditor();});els.editorPrevBtn.addEventListener('click',()=>{if(saveEditor()){editingIndex--;fillEditor();}});els.editorNextBtn.addEventListener('click',()=>{if(saveEditor()){editingIndex++;fillEditor();}});els.editor.addEventListener('click',evt=>{if(evt.target===els.editor)closeEditor();});els.resetScriptBtn.addEventListener('click',()=>{if(!confirm('Restore the starter narration cues? Edited wording and timings will be replaced.'))return;cues=clone(ORIGINAL_CUES);persist();updateDuration();renderTrack();renderList();activeIndex=-1;closeEditor();restart();toast('Original narration restored.');});els.exportBtn.addEventListener('click',()=>{const choice=prompt('Export format: type JSON or CSV','JSON');if(!choice)return;const format=choice.trim().toLowerCase();if(format==='csv')showSave('cuecraft_script.csv',csvString(cues),'text/csv;charset=utf-8');else if(format==='json')showSave('cuecraft_script.json',JSON.stringify(cues,null,2),'application/json;charset=utf-8');else toast('Choose JSON or CSV.');});els.importBtn.addEventListener('click',()=>els.importFile.click());els.importFile.addEventListener('change',()=>{if(els.importFile.files[0])importScript(els.importFile.files[0]);els.importFile.value='';});window.addEventListener('keydown',evt=>{if(recordingSession||recordStarting){if(evt.key==='Escape'){evt.preventDefault();stopRecording();}return;}if(els.editor.classList.contains('open')){if(evt.key==='Escape')closeEditor();return;}const tag=(document.activeElement?.tagName||'').toLowerCase();if(['input','select','textarea'].includes(tag))return;switch(evt.key.toLowerCase()){case ' ':evt.preventDefault();playPause();break;case 'arrowleft':evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)-5);break;case 'arrowright':evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)+5);break;case 'n':seek(cues[Math.min(activeIndex+1,cues.length-1)].start);break;case 'p':seek(cues[Math.max(activeIndex-1,0)].start);break;case 'r':restart();break;case 'f':els.fullscreenBtn.click();break;case 'm':els.mirrorBtn.click();break;}});window.addEventListener('resize',()=>renderFrame());}
+function bind(){els.playBtn.addEventListener('click',playPause);els.backBtn.addEventListener('click',()=>seek((videoURL?els.video.currentTime+offset:clock)-5));els.forwardBtn.addEventListener('click',()=>seek((videoURL?els.video.currentTime+offset:clock)+5));els.restartBtn.addEventListener('click',restart);els.fullscreenBtn.addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen();else if(els.stage.requestFullscreen)els.stage.requestFullscreen().catch(()=>toast('Full screen is not available in this browser.'));});els.speed.value=String(speed);els.speed.addEventListener('change',()=>{if(reviewSession){els.speed.value='1';return;}speed=Number(els.speed.value);els.video.playbackRate=speed;persistSettings();});els.font.addEventListener('change',()=>{document.documentElement.style.setProperty('--reading-size',`${els.font.value}px`);persistSettings();renderFrame();});els.offset.value=String(offset);els.offset.addEventListener('change',()=>{if(reviewSession){els.offset.value=String(offset);return;}offset=clamp(Number(els.offset.value)||0,-60,60);els.offset.value=String(offset);persistSettings();renderFrame();});els.mirrorBtn.addEventListener('click',()=>{mirrored=!mirrored;els.mirrorBtn.classList.toggle('primary',mirrored);persistSettings();renderFrame();});els.demoBtn.addEventListener('click',toggleDemo);els.loadVideoBtn.addEventListener('click',()=>els.videoFile.click());els.videoFile.addEventListener('change',()=>{setVideo(els.videoFile.files[0]);els.videoFile.value='';});els.removeVideoBtn.addEventListener('click',removeVideo);els.muteBtn.addEventListener('click',()=>{if(reviewSession){toast('Original audio stays muted during take review.');return;}els.video.muted=!els.video.muted;els.muteBtn.textContent=els.video.muted?'Muted ✓':'Audio on';});els.video.addEventListener('loadedmetadata',()=>{updateDuration();renderFrame();});els.video.addEventListener('ended',()=>{if(recordingSession)stopRecording();else if(reviewSession)stopSyncReview(false);else toast('Video finished.');renderFrame();});els.video.addEventListener('pause',()=>{if(recordingSession&&!recordingSession.stopping&&els.video.currentTime<els.video.duration-.15){stopRecording();toast('Video paused. The take was stopped to avoid losing sync.');}});els.video.addEventListener('error',()=>{if(videoURL)toast('Unable to decode video. Convert it to an MP4 with H.264 video and AAC audio.');});els.progress.addEventListener('click',evt=>{const r=els.progress.getBoundingClientRect();seek(duration*clamp((evt.clientX-r.left)/r.width,0,1));});els.progress.addEventListener('keydown',evt=>{if(['ArrowLeft','ArrowRight'].includes(evt.key)){evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)+(evt.key==='ArrowRight'?5:-5));}});els.editBtn.addEventListener('click',()=>openEditor());els.cancelEditBtn.addEventListener('click',closeEditor);els.saveEditBtn.addEventListener('click',()=>{if(saveEditor())closeEditor();});els.editorPrevBtn.addEventListener('click',()=>{if(saveEditor()){editingIndex--;fillEditor();}});els.editorNextBtn.addEventListener('click',()=>{if(saveEditor()){editingIndex++;fillEditor();}});els.editor.addEventListener('click',evt=>{if(evt.target===els.editor)closeEditor();});els.resetScriptBtn.addEventListener('click',()=>{if(!confirm('Restore the starter narration cues? Edited wording and timings will be replaced.'))return;cues=clone(ORIGINAL_CUES);clearAssignments('Script restored.');persist();updateDuration();renderTrack();renderList();activeIndex=-1;closeEditor();restart();toast('Original narration restored.');});els.exportBtn.addEventListener('click',()=>{const choice=prompt('Export format: type JSON or CSV','JSON');if(!choice)return;const format=choice.trim().toLowerCase();if(format==='csv')showSave('cuecraft_script.csv',csvString(cues),'text/csv;charset=utf-8');else if(format==='json')showSave('cuecraft_script.json',JSON.stringify(cues,null,2),'application/json;charset=utf-8');else toast('Choose JSON or CSV.');});els.importBtn.addEventListener('click',()=>els.importFile.click());els.importFile.addEventListener('change',()=>{if(els.importFile.files[0])importScript(els.importFile.files[0]);els.importFile.value='';});window.addEventListener('keydown',evt=>{if(recordingSession||recordStarting){if(evt.key==='Escape'){evt.preventDefault();stopRecording();}return;}if(els.editor.classList.contains('open')){if(evt.key==='Escape')closeEditor();return;}const tag=(document.activeElement?.tagName||'').toLowerCase();if(['input','select','textarea'].includes(tag))return;switch(evt.key.toLowerCase()){case ' ':evt.preventDefault();playPause();break;case 'arrowleft':evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)-5);break;case 'arrowright':evt.preventDefault();seek((videoURL?els.video.currentTime+offset:clock)+5);break;case 'n':seek(cues[Math.min(activeIndex+1,cues.length-1)].start);break;case 'p':seek(cues[Math.max(activeIndex-1,0)].start);break;case 'r':restart();break;case 'f':els.fullscreenBtn.click();break;case 'm':els.mirrorBtn.click();break;}});window.addEventListener('resize',()=>renderFrame());}
 
 // Recording lives entirely in volatile browser memory. Nothing is uploaded.
 function recorderMime(){if(typeof MediaRecorder==='undefined')return null;const types=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus','audio/webm'];return types.find(t=>MediaRecorder.isTypeSupported(t))||'';}
 function takeExtension(mime){return mime.includes('mp4')?'m4a':mime.includes('ogg')?'ogg':mime.includes('webm')?'webm':'bin';}
 function currentMediaTime(){return videoURL?els.video.currentTime:clock;}
-function setRecordingControls(active){for(const id of ['playBtn','backBtn','forwardBtn','restartBtn','speed','offset','demoBtn','loadVideoBtn','removeVideoBtn','importBtn','editBtn','exportBtn','recordFrom'])els[id].disabled=active;els.progress.setAttribute('aria-disabled',String(active));els.cueList.style.pointerEvents=active?'none':'';els.recordBtn.classList.toggle('recording',active);els.recordBtn.textContent=active?'■ Stop take':'● Record';els.recordState.classList.toggle('on',active);}
+function setRecordingControls(active){for(const id of ['playBtn','backBtn','forwardBtn','restartBtn','speed','offset','demoBtn','loadVideoBtn','removeVideoBtn','importBtn','editBtn','exportBtn','recordFrom','recordMode','recordCue','rangeStart','rangeEnd','recordPreroll'])els[id].disabled=active;els.progress.setAttribute('aria-disabled',String(active));els.cueList.style.pointerEvents=active?'none':'';els.recordBtn.classList.toggle('recording',active);els.recordBtn.textContent=active?'■ Stop take':'● Record selected';els.recordState.classList.toggle('on',active);}
 function audioFileDownload(blob,name){showSave(name,blob,blob.type||'application/octet-stream');}
 function pcm16Wav(samples,rate,padSeconds=0){
  if(!(samples instanceof Float32Array)||!Number.isFinite(rate)||rate<8000||rate>192000||!Number.isFinite(padSeconds)||padSeconds<0)throw Error('Invalid WAV parameters.');
@@ -287,6 +336,137 @@ async function startSyncReview(take){
 }
 async function wavFromTake(take){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)throw Error('This browser does not support audio decoding. Download the original take instead.');
  const context=new Context();try{const decoded=await context.decodeAudioData((await take.blob.arrayBuffer()).slice(0));const clip=clipBounds(take),start=Math.round(clip.first*decoded.sampleRate),end=Math.min(decoded.length,Math.round(clip.last*decoded.sampleRate));if(end<=start)throw Error('No audio remains after trimming.');const mono=new Float32Array(end-start);for(let channel=0;channel<decoded.numberOfChannels;channel++){const src=decoded.getChannelData(channel);for(let i=start;i<end;i++)mono[i-start]+=src[i]/decoded.numberOfChannels;}return pcm16Wav(mono,decoded.sampleRate,clip.videoStart);}finally{await context.close();}}
+function cueSignature(c){return JSON.stringify([c.start,c.end,c.title,c.text]);}
+function clearAssignments(reason){
+ if(reviewSession)stopSyncReview();
+ preferredTakes={};clearAssemblyPreview();renderAssembly();
+ if(reason&&takes.length)toast(reason+' Previous takes remain available to download, but must be re-recorded for the updated timeline.');
+}
+function eligibleTakesForCue(index){
+ const cue=cues[index],signature=cueSignature(cue),slotStart=cue.start-(videoURL?offset:0),slotEnd=cue.end-(videoURL?offset:0);
+ return takes.filter(t=>t.cueSignatures?.[index]===signature&&t.startAt<slotEnd-.03&&t.startAt+t.length>slotStart+.03);
+}
+function refreshRecordCueOptions(){
+ if(!els.recordCue)return;
+ const oldCue=els.recordCue.value,oldStart=els.rangeStart.value,oldEnd=els.rangeEnd.value;
+ const fill=(select,includeCurrent)=>{
+  select.replaceChildren();if(includeCurrent){const opt=e('option','', 'Current cue');opt.value='current';select.append(opt);}
+  cues.forEach((cue,i)=>{const opt=e('option','',`${pad2(i+1)} · ${cue.title}`);opt.value=String(i);select.append(opt);});
+ };
+ fill(els.recordCue,true);fill(els.rangeStart,false);fill(els.rangeEnd,false);
+ if([...els.recordCue.options].some(o=>o.value===oldCue))els.recordCue.value=oldCue;
+ els.rangeStart.value=[...els.rangeStart.options].some(o=>o.value===oldStart)?oldStart:'0';
+ els.rangeEnd.value=[...els.rangeEnd.options].some(o=>o.value===oldEnd)?oldEnd:String(Math.max(0,cues.length-1));
+}
+function updateRecordMode(){
+ const mode=els.recordMode.value;
+ els.recordCueWrap.hidden=mode!=='cue';els.rangeStartWrap.hidden=mode!=='range';els.rangeEndWrap.hidden=mode!=='range';els.continuousWrap.hidden=mode!=='continuous';
+ els.recordPreroll.disabled=mode==='continuous';
+}
+function recordingTarget(){
+ const mode=els.recordMode.value;const now=videoURL?els.video.currentTime+offset:clock;
+ let first=0,last=cues.length-1,requested=0,endAt=duration;
+ if(mode==='cue'){first=last=els.recordCue.value==='current'?currentAt(now):Number(els.recordCue.value);requested=cues[first].start;endAt=cues[last].end;}
+ else if(mode==='range'){first=Number(els.rangeStart.value);last=Number(els.rangeEnd.value);if(last<first)throw Error('The last cue must follow the first cue.');requested=cues[first].start;endAt=cues[last].end;}
+ else{requested=els.recordFrom.value==='start'?0:els.recordFrom.value==='cue'?cues[currentAt(now)].start:now;endAt=duration;first=currentAt(requested);}
+ if(videoURL&&requested-offset<-.05)throw Error('Cue starts before the beginning of the loaded video. Adjust your script offset.');
+ if(!Number.isFinite(requested)||requested>=duration-.05)throw Error('Choose an earlier recording position.');
+ const lead=mode==='continuous'?0:Math.min(Number(els.recordPreroll.value)||0,Math.max(0,requested-offset));
+ return {mode,first,last,requested,endAt,lead,cueSignatures:Object.fromEntries(cues.slice(first,last+1).map((c,i)=>[first+i,cueSignature(c)]))};
+}
+function buildAssemblyPlan(cueList,takeList,selection,shift=0){
+ const segments=[],warnings=[];let complete=0;
+ for(let i=0;i<cueList.length;i++){
+  const cue=cueList[i],slotStart=Math.max(0,cue.start+shift),slotEnd=Math.max(0,cue.end+shift);
+  const take=takeList.find(t=>t.number===Number(selection[i]));
+  if(!take||take.cueSignatures?.[i]!==cueSignature(cue)){warnings.push(`Cue ${i+1} (${cue.title}) has no selected matching take.`);continue;}
+  if(slotEnd<=slotStart){warnings.push(`Cue ${i+1} is outside the video timeline.`);continue;}
+  const clip=clipBounds(take),first=Math.max(slotStart,clip.videoStart),last=Math.min(slotEnd,clip.videoEnd);
+  if(last-first<.05){warnings.push(`Cue ${i+1} has no usable recording inside its time window.`);continue;}
+  complete++;
+  if(clip.videoStart<slotStart-.1||clip.videoEnd>slotEnd+.1){if(take.mode==='cue')warnings.push(`Cue ${i+1}: recording exceeds its cue window; excess audio will be cropped.`);}
+  if(first>slotStart+.35||last<slotEnd-.35)warnings.push(`Cue ${i+1}: unfilled time becomes silence (${Math.max(0,first-slotStart).toFixed(1)}s start; ${Math.max(0,slotEnd-last).toFixed(1)}s end).`);
+  const candidate={take,start:first,end:last,sourceStart:first-take.startAt,sourceEnd:last-take.startAt};
+  const prev=segments.at(-1);
+  if(prev&&prev.take===take&&Math.abs(prev.end-candidate.start)<.015&&Math.abs(prev.sourceEnd-candidate.sourceStart)<.015){prev.end=candidate.end;prev.sourceEnd=candidate.sourceEnd;}
+  else segments.push(candidate);
+ }
+ return {segments,warnings,complete,total:cueList.length};
+}
+function currentAssemblyPlan(){return buildAssemblyPlan(cues,takes,preferredTakes,videoURL?-offset:0);}
+function clearAssemblyPreview(){
+ if(assemblyPreviewTake&&reviewSession?.take===assemblyPreviewTake)stopSyncReview();
+ if(assemblyPreviewUrl){URL.revokeObjectURL(assemblyPreviewUrl);assemblyPreviewUrl=null;assemblyPreviewTake=null;}
+}
+function renderAssembly(){
+ if(!els.assemblyList)return;
+ const plan=currentAssemblyPlan();els.assemblyCount.textContent=`${plan.complete} / ${plan.total} selected`;
+ els.assemblySummary.textContent=plan.complete===plan.total?'All cues have matching preferred recordings.':'Choose a preferred take for each cue. Unselected portions export as silence.';
+ els.assemblyList.replaceChildren();
+ cues.forEach((cue,i)=>{
+  const row=e('div','assembly-cue'),label=e('div');label.append(e('strong','',`${pad2(i+1)} · ${cue.title}`),e('small','',`${fmt(cue.start)} – ${fmt(cue.end)}`));
+  const choose=e('select','field');choose.setAttribute('aria-label',`Preferred take for cue ${i+1}`);
+  const empty=e('option','','— Missing / silent —');empty.value='';choose.append(empty);
+  const options=eligibleTakesForCue(i);
+  options.forEach(t=>{const opt=e('option','',`Take ${t.number} · ${Math.max(.1,t.length-(t.trimStart||0)-(t.trimEnd||0)).toFixed(1)}s`);opt.value=String(t.number);choose.append(opt);});
+  if(options.some(t=>t.number===Number(preferredTakes[i])))choose.value=String(preferredTakes[i]);
+  else if(preferredTakes[i]){delete preferredTakes[i];}
+  choose.addEventListener('change',()=>{if(reviewSession)stopSyncReview();if(choose.value)preferredTakes[i]=Number(choose.value);else delete preferredTakes[i];clearAssemblyPreview();renderAssembly();});
+  row.append(label,choose);els.assemblyList.append(row);
+ });
+ els.assemblyWarnings.replaceChildren();
+ if(plan.warnings.length){const shown=plan.warnings.slice(0,5).join(' ');els.assemblyWarnings.textContent=shown+(plan.warnings.length>5?` +${plan.warnings.length-5} further timing notes.`:'');}
+ else els.assemblyWarnings.textContent='All selected cues fit their allotted time windows.';
+ els.previewAssemblyBtn.disabled=assemblyBusy||!plan.segments.length;
+ els.exportAssemblyBtn.disabled=assemblyBusy||!plan.segments.length;
+}
+function selectTakeForCues(take){
+ const indices=Object.keys(take.cueSignatures||{}).map(Number);
+ for(const i of indices)if(eligibleTakesForCue(i).includes(take))preferredTakes[i]=take.number;
+ clearAssemblyPreview();renderAssembly();showTakes();
+}
+function assembleSamples(plan,decodedMap,frames,rate){
+ if(!Number.isInteger(frames)||frames<0||frames>rate*MAX_ASSEMBLY_SECONDS)throw Error('The assembly exceeds the 15-minute offline limit. Export individual aligned takes for longer videos.');
+ const output=new Float32Array(frames);
+ for(const seg of plan.segments){
+  const decoded=decodedMap.get(seg.take.number);if(!decoded)throw Error(`Missing decoded take ${seg.take.number}.`);
+  const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i));
+  const from=Math.max(0,Math.round(seg.start*rate)),to=Math.min(frames,Math.round(seg.end*rate));
+  const count=to-from,fade=Math.min(Math.round(rate*.012),Math.floor(count/4));
+  for(let j=0;j<count;j++){
+   const at=(seg.sourceStart+(from/rate-seg.start)+j/rate)*decoded.sampleRate;
+   const a=Math.floor(at),b=Math.min(decoded.length-1,a+1),fract=at-a;
+   if(a<0||a>=decoded.length)continue;
+   let sample=0;for(const channel of channels)sample+=(channel[a]*(1-fract)+channel[b]*fract)/channels.length;
+   const envelope=fade?Math.min(1,j/fade,(count-1-j)/fade):1;
+   output[from+j]=clamp(output[from+j]+sample*envelope,-1,1);
+  }
+ }
+ return output;
+}
+async function assembledWav(){
+ const plan=currentAssemblyPlan();if(!plan.segments.length)throw Error('Record and select at least one take.');
+ const length=videoURL&&Number.isFinite(els.video.duration)?els.video.duration:duration;
+ if(length>MAX_ASSEMBLY_SECONDS)throw Error('Assembly is limited to 15 minutes locally. Export aligned individual WAVs for longer videos.');
+ const Context=window.AudioContext||window.webkitAudioContext;if(!Context)throw Error('Audio decoding is unavailable in this browser.');
+ const ctx=new Context(),decoded=new Map();try{
+  for(const seg of plan.segments){if(!decoded.has(seg.take.number))decoded.set(seg.take.number,await ctx.decodeAudioData((await seg.take.blob.arrayBuffer()).slice(0)));}
+  return pcm16Wav(assembleSamples(plan,decoded,Math.ceil(length*44100),44100),44100);
+ }finally{await ctx.close();}
+}
+async function runAssembly(action){
+ if(recordingSession||recordStarting||assemblyBusy)return;
+ const plan=currentAssemblyPlan();if(!plan.segments.length){toast('Choose at least one take.');return;}
+ if(plan.complete<plan.total&&!confirm(`${plan.total-plan.complete} cues have no selected take and will be silent. Continue?`))return;
+ assemblyBusy=true;els.assemblySummary.textContent='Preparing your assembled audio…';renderAssembly();
+ try{
+  const wav=await assembledWav();if(action==='export'){audioFileDownload(wav,'cuecraft_narration_assembled.wav');toast('Assembled narration WAV exported.');}
+  else{clearAssemblyPreview();assemblyPreviewUrl=URL.createObjectURL(wav);const length=videoURL&&Number.isFinite(els.video.duration)?els.video.duration:duration;
+   assemblyPreviewTake={number:'mix',startAt:0,length,trimStart:0,trimEnd:0,url:assemblyPreviewUrl};
+   await startSyncReview(assemblyPreviewTake);
+  }
+ }catch(err){toast('Assembly failed: '+err.message);}finally{assemblyBusy=false;renderAssembly();}
+}
 function showTakes(){els.takeList.replaceChildren();for(const take of takes){
  const card=e('div','take-card');card.dataset.take=take.number;
  const clip=clipBounds(take);
@@ -294,42 +474,104 @@ function showTakes(){els.takeList.replaceChildren();for(const take of takes){
  const audio=e('audio');audio.controls=true;audio.preload='none';audio.src=take.url;audio.setAttribute('aria-label',`Listen to original take ${take.number}`);
  const trims=e('div','take-trim');for(const [which,name] of [['start','Trim start (s)'],['end','Trim end (s)']]){
   const label=e('label','',name),input=e('input','field');input.type='number';input.min='0';input.step='0.1';input.max=String(Math.max(0,take.length-.05));input.value=String((which==='start'?take.trimStart:take.trimEnd)||0);input.setAttribute('aria-label',`${name} for take ${take.number}`);
-  input.addEventListener('change',()=>{try{setTakeTrim(take,which,input.value);showTakes();toast(`Take ${take.number} trim updated.`);}catch(err){toast(err.message);input.value=String((which==='start'?take.trimStart:take.trimEnd)||0);}});
+  input.addEventListener('change',()=>{try{setTakeTrim(take,which,input.value);clearAssemblyPreview();showTakes();renderAssembly();toast(`Take ${take.number} trim updated.`);}catch(err){toast(err.message);input.value=String((which==='start'?take.trimStart:take.trimEnd)||0);}});
   label.append(input);trims.append(label);
  }
  const buttons=e('div','take-actions');
- const preview=e('button','tiny primary','▶ Review + video');preview.title='Review this take in sync with the reference video and timeline';preview.addEventListener('click',()=>startSyncReview(take));
+ if(take.cueSignatures&&Object.keys(take.cueSignatures).length){const use=e('button','tiny preferred','★ Prefer for cue(s)');use.addEventListener('click',()=>selectTakeForCues(take));buttons.append(use);}
+  const preview=e('button','tiny primary','▶ Review + video');preview.title='Review this take in sync with the reference video and timeline';preview.addEventListener('click',()=>startSyncReview(take));
  const original=e('button','tiny','↧ Original');original.addEventListener('click',()=>audioFileDownload(take.blob,`cuecraft_take_${take.number}.${takeExtension(take.blob.type)}`));
  const aligned=e('button','tiny','↧ Trimmed WAV');aligned.title='Export only the selected portion with silence before its aligned timeline start';aligned.addEventListener('click',async()=>{aligned.disabled=true;aligned.textContent='Preparing…';try{const wav=await wavFromTake(take);audioFileDownload(wav,`cuecraft_take_${take.number}_aligned.wav`);toast('Trimmed WAV exported at its correct timeline position.');}catch(err){toast('WAV export failed: '+err.message);}finally{aligned.disabled=false;aligned.textContent='↧ Trimmed WAV';}});
- const remove=e('button','tiny','Delete');remove.addEventListener('click',()=>{if(!confirm(`Delete take ${take.number} from this session?`))return;if(reviewSession?.take===take)stopSyncReview();audio.pause();URL.revokeObjectURL(take.url);takes=takes.filter(t=>t!==take);showTakes();});
+ const remove=e('button','tiny','Delete');remove.addEventListener('click',()=>{if(!confirm(`Delete take ${take.number} from this session?`))return;for(const key of Object.keys(preferredTakes))if(preferredTakes[key]===take.number)delete preferredTakes[key];clearAssemblyPreview();if(reviewSession?.take===take)stopSyncReview();audio.pause();URL.revokeObjectURL(take.url);takes=takes.filter(t=>t!==take);showTakes();renderAssembly();});
  buttons.append(preview,original,aligned,remove);card.append(heading,trims,audio,buttons,e('div','take-hint',`Timeline ${fmt(clip.videoStart)}–${fmt(clip.videoEnd)} · Original stays unchanged.`));els.takeList.append(card);
  }
  if(!takes.length)els.takeList.append(e('div','record-tip','No takes yet. Choose a starting point, then press Record.'));
 }
-function stopRecording(){const session=recordingSession;if(!session||session.stopping)return;session.stopping=true;els.recordState.textContent='Finishing audio take…';try{session.recorder.stop();}catch(err){session.stream.getTracks().forEach(t=>t.stop());recordingSession=null;setRecordingControls(false);els.recordState.textContent='Recorder stopped unexpectedly.';toast(err.message);}if(videoURL)els.video.pause();else playing=false;}
-async function startRecording(){if(recordStarting||recordingSession)return;if(reviewSession)stopSyncReview();
+function stopRecording(){
+ const session=recordingSession;if(!session||session.stopping)return;session.stopping=true;
+ if(session.phase==='preroll'){
+  session.stream.getTracks().forEach(t=>t.stop());recordingSession=null;
+  if(videoURL){els.video.pause();els.video.muted=session.oldMuted;els.muteBtn.textContent=els.video.muted?'Muted ✓':'Audio on';}else playing=false;
+  setRecordingControls(false);els.recordState.textContent='Pre-roll cancelled; no audio was recorded.';return;
+ }
+ els.recordState.textContent='Finishing audio take…';
+ try{session.recorder.stop();}catch(err){session.stream.getTracks().forEach(t=>t.stop());recordingSession=null;setRecordingControls(false);els.recordState.textContent='Recorder stopped unexpectedly.';toast(err.message);}
+ if(videoURL){els.video.pause();els.video.muted=session.oldMuted;els.muteBtn.textContent=els.video.muted?'Muted ✓':'Audio on';}else playing=false;
+}
+function beginCapture(session){
+ if(recordingSession!==session||session.stopping||session.phase!=='preroll')return;
+ session.phase='recording';session.scriptStart=videoURL?els.video.currentTime+offset:clock;
+ session.startAt=currentMediaTime();session.started=performance.now();
+ try{session.recorder.start(250);els.recordState.textContent=`● Recording ${session.mode} · ${fmt(session.requested)}–${fmt(session.endAt)}`;}
+ catch(err){els.recordState.textContent='Recorder could not start: '+err.message;session.stream.getTracks().forEach(t=>t.stop());recordingSession=null;setRecordingControls(false);}
+}
+async function startRecording(){
+ if(recordStarting||recordingSession||assemblyBusy)return;if(reviewSession)stopSyncReview();
+ if(takes.length>=MAX_TAKES){toast(`You have ${MAX_TAKES} takes in memory. Export and delete unwanted takes before recording more.`);return;}
  if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){els.recordState.textContent='Microphone recording is unavailable here. Use a recent Chrome, Edge or Safari browser in a secure context.';return;}
+ let target;try{target=recordingTarget();}catch(err){toast(err.message);return;}
  recordStarting=true;els.recordBtn.disabled=true;els.recordState.textContent='Requesting microphone permission…';let stream=null;
- try{if(videoURL&&els.video.readyState<1)throw Error('Wait for video metadata to load before recording.');
+ try{
+  if(videoURL&&els.video.readyState<1)throw Error('Wait for video metadata to load before recording.');
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
   const preferred=recorderMime(),recorder=preferred?new MediaRecorder(stream,{mimeType:preferred}):new MediaRecorder(stream);
-  // Lock all transport changes while audio is being captured.
   els.video.pause();playing=false;
-  let requested=els.recordFrom.value==='start'?0:els.recordFrom.value==='cue'?cues[currentAt(videoURL?els.video.currentTime+offset:clock)].start:(videoURL?els.video.currentTime+offset:clock);
-  if(!Number.isFinite(requested)||requested>=duration-.1)requested=0;
-  if(videoURL){els.video.currentTime=clamp(requested-offset,0,els.video.duration);}else clock=clamp(requested,0,duration);
+  const oldMuted=els.video.muted;els.video.muted=true;els.muteBtn.textContent='Muted ✓';
+  const playbackAt=target.requested-target.lead;
+  if(videoURL){
+   const position=clamp(playbackAt-offset,0,els.video.duration);
+   if(Math.abs(els.video.currentTime-position)>.05){await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{els.video.removeEventListener('seeked',onSeek);reject(Error('Video seek timed out'));},4000);
+    const onSeek=()=>{clearTimeout(timer);els.video.removeEventListener('seeked',onSeek);resolve();};
+    els.video.addEventListener('seeked',onSeek);els.video.currentTime=position;
+   });}
+  }else clock=playbackAt;
   speed=1;els.speed.value='1';els.video.playbackRate=1;persistSettings();
-  const startAt=currentMediaTime(),chunks=[];
-  const session={stream,recorder,startAt,scriptStart:clock,started:performance.now(),chunks,stopping:false};recordingSession=session;
-  recorder.ondataavailable=evt=>{if(evt.data?.size)chunks.push(evt.data);};
+  const session={...target,stream,recorder,oldMuted,startAt:videoURL?Math.max(0,target.requested-offset):target.requested,scriptStart:target.requested,started:0,chunks:[],phase:'preroll',stopping:false};
+  recordingSession=session;
+  recorder.ondataavailable=event=>{if(event.data?.size)session.chunks.push(event.data);};
   recorder.onerror=()=>{els.recordState.textContent='Microphone recording failed.';stopRecording();};
-  recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());if(recordingSession===session)recordingSession=null;const blob=new Blob(chunks,{type:recorder.mimeType||chunks[0]?.type||'audio/webm'});if(blob.size){const length=(performance.now()-session.started)/1000;const take={number:nextTake++,blob,url:URL.createObjectURL(blob),startAt,length,trimStart:0,trimEnd:0};takes.unshift(take);if(takes.length>12){const old=takes.pop();if(reviewSession?.take===old)stopSyncReview();URL.revokeObjectURL(old.url);}showTakes();els.recordState.textContent=`Saved take ${take.number}. Download it to keep a copy.`;toast('Take captured. Listen below or export a WAV aligned to the video.');}else{els.recordState.textContent='No audio was captured. Check microphone permissions.';}setRecordingControls(false);renderFrame();};
-  recorder.start(250);session.started=performance.now();recordStarting=false;setRecordingControls(true);els.recordState.textContent=`● Recording · begins at ${fmt(startAt)} · video is muted.`;
-  // Start playback after capture has started; a seek's metadata is already available.
-  if(videoURL){await els.video.play();}else playing=true;
+  recorder.onstop=()=>{
+   stream.getTracks().forEach(track=>track.stop());if(recordingSession===session)recordingSession=null;
+   if(videoURL){els.video.muted=session.oldMuted;els.muteBtn.textContent=els.video.muted?'Muted ✓':'Audio on';}
+   const blob=new Blob(session.chunks,{type:recorder.mimeType||session.chunks[0]?.type||'audio/webm'});
+   if(blob.size){
+    const length=Math.max(.05,(performance.now()-session.started)/1000);
+    const take={number:nextTake++,blob,url:URL.createObjectURL(blob),startAt:session.startAt,length,trimStart:0,trimEnd:0,mode:session.mode,cueSignatures:session.cueSignatures};
+    takes.unshift(take);
+    // Keep the earlier preferred take unless the cue has never been assigned.
+    for(const key of Object.keys(take.cueSignatures))if(!preferredTakes[key]&&eligibleTakesForCue(Number(key)).includes(take))preferredTakes[key]=take.number;
+    clearAssemblyPreview();showTakes();renderAssembly();
+    els.recordState.textContent=`Take ${take.number} saved. Choose your preferred recording under Narration assembly.`;
+    toast('Take saved. You can record this cue again or move to the next.');
+   }else els.recordState.textContent='No audio was captured. Check microphone permissions.';
+   setRecordingControls(false);renderFrame();
+  };
+  recordStarting=false;setRecordingControls(true);
+  if(target.lead>.05){
+   els.recordState.textContent=`Pre-roll: microphone capture starts at ${fmt(target.requested)}.`;
+   if(videoURL)await els.video.play();else playing=true;
+  }else{
+   beginCapture(session);
+   if(videoURL)await els.video.play();else playing=true;
+  }
   const track=stream.getAudioTracks()[0];if(track)track.addEventListener('ended',()=>{if(recordingSession===session)stopRecording();});
- }catch(err){if(recordingSession){stopRecording();}else if(stream)stream.getTracks().forEach(t=>t.stop());els.recordState.textContent='Cannot record: '+(err.message||'microphone permission denied');toast('Microphone could not start. Check the browser microphone permission.');recordStarting=false;setRecordingControls(false);}finally{recordStarting=false;els.recordBtn.disabled=false;}}
-function bindRecording(){els.stopReviewBtn.addEventListener('click',()=>stopSyncReview());els.reviewAudio.addEventListener('ended',()=>{if(reviewSession)stopSyncReview();});els.recordBtn.addEventListener('click',()=>recordingSession?stopRecording():startRecording());if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){els.recordAvailability.textContent='Not available';els.recordBtn.disabled=true;els.recordState.textContent='Recording requires microphone access in a supported browser, generally over HTTPS or a trusted local file.';}showTakes();}
+ }catch(err){
+  if(recordingSession)stopRecording();else if(stream)stream.getTracks().forEach(t=>t.stop());
+  els.recordState.textContent='Cannot record: '+(err.message||'microphone permission denied');toast('Microphone could not start. Check the browser microphone permission.');
+  recordStarting=false;setRecordingControls(false);
+ }finally{recordStarting=false;els.recordBtn.disabled=false;}
+}
+function bindRecording(){
+ els.stopReviewBtn.addEventListener('click',()=>stopSyncReview());
+ els.reviewAudio.addEventListener('ended',()=>{if(reviewSession)stopSyncReview();});
+ els.recordBtn.addEventListener('click',()=>recordingSession?stopRecording():startRecording());
+ els.recordMode.addEventListener('change',updateRecordMode);
+ els.previewAssemblyBtn.addEventListener('click',()=>runAssembly('review'));
+ els.exportAssemblyBtn.addEventListener('click',()=>runAssembly('export'));
+ if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){els.recordAvailability.textContent='Not available';els.recordBtn.disabled=true;els.recordState.textContent='Recording requires microphone access in a supported browser, generally over HTTPS or a trusted local file.';}
+ updateRecordMode();showTakes();renderAssembly();
+}
 
 loadStored();updateDuration();document.documentElement.style.setProperty('--reading-size',`${els.font.value}px`);els.mirrorBtn.classList.toggle('primary',mirrored);renderTrack();renderList();bind();bindLayoutDivider();bindRecording();renderFrame();requestAnimationFrame(tick);
 </script>
