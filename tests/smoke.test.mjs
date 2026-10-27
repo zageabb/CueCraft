@@ -56,3 +56,13 @@ test('recordings are session-only and can be removed without affecting the cue s
  assert.match(html,/takes\.filter\(t=>t!==take\)/);
  assert.doesNotMatch(html,/localStorage\.setItem\([^\n]*takes/);
 });
+
+test('application version is embedded in HTML metadata and displayed dynamically',()=>{
+ const versions = [...html.matchAll(/<meta name="app-version" content="(\d+\.\d+\.\d+)">/g)];
+ assert.equal(versions.length, 1);
+ assert.match(html, /<meta name="application-name" content="CueCraft">/);
+ assert.match(html, /<span id="appVersion" aria-label="Application version"><\/span>/);
+ assert.match(html, /const APP_VERSION = document\.querySelector\('meta\[name="app-version"\]'\)\.content;/);
+ assert.match(html, /getElementById\('appVersion'\)\.textContent/);
+ assert.match(html, /\$\{APP_VERSION\}/);
+});

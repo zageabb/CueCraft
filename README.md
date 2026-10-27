@@ -2,6 +2,14 @@
 
 CueCraft is an **offline-first teleprompter and timed voiceover assistant**. It runs as a standalone HTML file: no account, installation, server or external API is required.
 
+## Stable filename and version (UDA)
+
+The canonical GitHub file is always **`index.html`**; the standalone download is always **`CueCraft.html`**. Never add a release number to either filename.
+
+The current version is stored **inside the HTML** as `<meta name="app-version" content="0.2.1">` and is shown in the app header. The metadata is the single source of truth for the displayed version; update it for each release using semantic versioning.
+
+**UDA compatibility:** the Universal Deployment Agent updates registered apps by following Git commits on the configured branch (normally `main`). A stable `index.html` allows a deployed checkout or static publisher to serve the same path after a Git update. The HTML version is for identifying the running build; adding metadata alone does **not** register CueCraft in UDA, configure a web server or enable automatic deployment.
+
 ## Try the guided demo
 
 1. Open `index.html` in a modern desktop browser.
@@ -26,7 +34,7 @@ python scripts/create_demo_video.py
 
 Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and practise speaking the preloaded narration. The demo is **intentionally silent** so you can record your own replacement voiceover. Generated video is not committed to the repository to keep it small.
 
-## Features (v0.2.0)
+## Features
 
 - Large time-synchronised autocue, word-by-word pace guidance, countdowns, next-cue preview
 - Embedded beginner-friendly three-slide guided demo and downloadable/generated MP4 counterpart
