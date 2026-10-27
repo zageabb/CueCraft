@@ -6,7 +6,7 @@ CueCraft is an **offline-first teleprompter and timed voiceover assistant**. It 
 
 The canonical GitHub file is always **`index.html`**; the standalone download is always **`CueCraft.html`**. Never add a release number to either filename.
 
-The current version is stored **inside the HTML** as `<meta name="app-version" content="0.2.2">` and is shown in the app header. The metadata is the single source of truth for the displayed version; update it for each release using semantic versioning.
+The current version is stored **inside the HTML** as `<meta name="app-version" content="0.3.0">` and is shown in the app header. The metadata is the single source of truth for the displayed version; update it for each release using semantic versioning.
 
 **UDA compatibility:** the Universal Deployment Agent updates registered apps by following Git commits on the configured branch (normally `main`). A stable `index.html` allows a deployed checkout or static publisher to serve the same path after a Git update. The HTML version is for identifying the running build; adding metadata alone does **not** register CueCraft in UDA, configure a web server or enable automatic deployment.
 
@@ -56,7 +56,7 @@ Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and pract
 - Scripts and settings saved in local browser storage, when supported
 - Runs entirely offline with plain HTML, CSS and JavaScript
 
-**Important:** Word highlighting follows the timeline, not live speech. This version records microphone audio but does **not** synthesise voices, edit multiple takes, or render a final video directly.
+**Important:** Word highlighting follows the timeline, not live speech. CueCraft trims takes non-destructively and previews them beside the video; mixing multiple takes or rendering a finished video is not yet included.
 
 
 ## Record a narration take (v0.2.0)
@@ -65,12 +65,12 @@ Load the resulting `examples/cuecraft_demo.mp4` through **Load video** and pract
 2. Under **Record voiceover**, select **From start**, **Current cue** or **Current position**.
 3. Press **● Record** and grant the browser microphone permission. CueCraft switches to **1× speed** and starts the teleprompter/video, with the reference video muted.
 4. Follow the text, then press **■ Stop take**. Recording also stops automatically when the video/timeline finishes.
-5. Review your take with its audio player. Download **Original** to keep the browser's native audio (often WebM/Opus on Chrome/Edge or MP4 audio on Safari).
-6. Or download **Aligned WAV** for 16-bit mono PCM with leading silence added when you started partway through the video. WAV is intended for a video editor or FFmpeg.
+5. Listen to the source audio, or choose **Review + video** to preview a take against the original video, muted, at its saved position. Press **Stop review** when finished.
+6. Optionally set **Trim start** and **Trim end** (seconds removed from either side). Choose **Original** to keep the untouched recording or **Trimmed WAV** to export only the retained section, with leading silence positioning it on the video timeline. WAV is ready for an editor or FFmpeg.
 
-**Take privacy:** audio is held only in browser memory until you explicitly download it. Closing or refreshing the tab loses unsaved takes. To avoid memory growth, at most twelve takes remain available at once. CueCraft makes no uploads and requests microphone-only capture.
+**Take privacy:** audio and trim choices are only in browser memory until you explicitly download a file. Closing or refreshing the tab loses unsaved takes. To avoid memory growth, at most twelve takes remain available at once. CueCraft makes no uploads and requests microphone-only capture.
 
-Playback seek, pause, cue editing and script import are intentionally locked during capture. Use headphones to avoid capturing the reference audio. Browser recordings can have slight startup/codec latency, so check the final sync by listening. Recording requires browser microphone permission and a secure origin; trusted local files or localhost generally work, depending on your browser.
+Seeking, pausing, cue editing and script import are intentionally locked during **recording**. During **review**, you can play, pause and seek within the kept segment; seeking outside it ends the preview. Video swapping and speed settings are locked during review. Use headphones to avoid capturing the reference audio. Browser recordings can have slight startup/codec latency, so check the final sync by listening. Recording requires browser microphone permission and a secure origin; trusted local files or localhost generally work, depending on your browser.
 
 ### Replace the soundtrack using FFmpeg (optional)
 
@@ -112,4 +112,4 @@ node --test tests/*.test.mjs
 
 See `AGENTS.md` and `DEVELOPMENT.md`. The app should remain functional by double-clicking `index.html`; a web server is optional.
 
-Roadmap: multi-take editing and comping, synchronised take playback with the reference video, one-click completed-video export and optional local AI script assistance.
+Roadmap: combine selected parts of several recordings into one audio mix, one-click completed-video export and optional local AI script assistance.

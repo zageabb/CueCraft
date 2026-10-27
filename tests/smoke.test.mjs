@@ -85,3 +85,30 @@ test('tablet and mobile panels stack with a full-width video',()=>{
  assert.match(html, /\.layout-divider\{display:none\}/);
  assert.match(html, /\.video-placeholder\{width:100%;aspect-ratio:16\/9;/);
 });
+
+test('v0.3.0 review and trim controls are present and do not persist recordings',()=>{
+ for(const id of ['reviewStatus','reviewLabel','stopReviewBtn','reviewAudio'])assert.match(html,new RegExp('id="'+id+'"'));
+ for(const method of ['startSyncReview','stopSyncReview','syncReviewToTimeline','clipBounds','setTakeTrim'])assert.match(html,new RegExp('function '+method+'\\('));
+ assert.match(html,/take\.startAt\+trimStart/);assert.match(html,/syncReviewToTimeline\(\);requestAnimationFrame\(tick\)/);
+ assert.match(html,/\.side > \.side-panel:first-child\{position:sticky/);
+ assert.doesNotMatch(html,/localStorage\.setItem\([^\n]*(?:reviewSession|takes)/);
+});
+test('take trim leaves a valid interval at the correct video timestamps',()=>{
+ const a=html.match(/function clipBounds\(take\)\{[\s\S]*?^\}/m)?.[0],b=html.match(/function setTakeTrim\(take,which,value\)\{[\s\S]*?^\}/m)?.[0];assert.ok(a&&b);
+ const env=vm.createContext({reviewSession:null,stopSyncReview(){}});vm.runInContext(a+'\n'+b,env);
+ const take={startAt:18,length:4,trimStart:0,trimEnd:0};
+ env.setTakeTrim(take,'start',.75);env.setTakeTrim(take,'end',1.25);
+ assert.deepEqual({...env.clipBounds(take)},{first:.75,last:2.75,videoStart:18.75,videoEnd:20.75});
+ assert.throws(()=>env.setTakeTrim(take,'start',3.5),/Leave at least/);
+ assert.throws(()=>env.setTakeTrim(take,'end',-1),/valid non-negative/);
+});
+test('trimmed WAV has retained samples after aligned leading silence',async()=>{
+ const f=[html.match(/function pcm16Wav\([\s\S]*?^\}/m)?.[0],html.match(/function clipBounds\(take\)\{[\s\S]*?^\}/m)?.[0],html.match(/async function wavFromTake\(take\)\{[^\n]+\n[^\n]+\}/m)?.[0]];assert.ok(f.every(Boolean));
+ const samples=new Float32Array(4000);samples.fill(.5);
+ const ctx=vm.createContext({Blob,Float32Array,window:{AudioContext:class {async decodeAudioData(){return {sampleRate:8000,length:4000,numberOfChannels:1,getChannelData:()=>samples};}async close(){}}}});
+ vm.runInContext(f.join('\n'),ctx);
+ const wav=await ctx.wavFromTake({blob:new Blob(['test']),startAt:2,length:.5,trimStart:.1,trimEnd:.1});
+ const b=Buffer.from(await wav.arrayBuffer());assert.equal(b.toString('ascii',0,4),'RIFF');
+ assert.equal(b.readUInt32LE(40),2*(Math.round(2.1*8000)+2400));
+ assert.equal(b.readInt16LE(44),0);assert.equal(b.readInt16LE(44+Math.round(2.1*8000)*2),16384);
+});

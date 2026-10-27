@@ -30,3 +30,12 @@ Versioning: keep the repository entrypoint `index.html` and downloadable `CueCra
 - At viewport widths <=980px, use the stacked layout with a full-width video, and hide the divider.
 - Check at 1600x900, 1366x768, 1024x768, 980x720 and 390x844; no horizontal page overflow. Double-click reset and keyboard arrow adjustment must work.
 - Column resizing reflows the narration, which is re-positioned by the existing animation-frame loop.
+
+## Synchronised take review and non-destructive trimming (v0.3.0)
+
+- The reference video remains visible on desktop while the take list scrolls. In responsive stacked mode, the video returns to normal flow.
+- Recorded take starts are in media time. Trim start/end are seconds removed from either edge. Clip beginning = `take.startAt + trimStart`.
+- The source recording remains unchanged. Original download is raw; Trimmed WAV keeps selected samples and leading silence at the timeline location.
+- Review seeks/pause resume with media. Seeking outside the retained segment ends preview. Stop review clears audio, pauses and restores original video mute and controls.
+- Browser test with generated WAV and silent example MP4 must pass without JS errors.
+- Multi-take mixing and finished-video export remain future work.
