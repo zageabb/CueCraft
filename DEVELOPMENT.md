@@ -7,10 +7,10 @@
 - The three-slide practice video generator uses matching intervals **0–14**, **14–30**, **30–46** seconds. Regenerate after changing cue timing.
 - Import text must always be inserted as text, never interpreted as HTML; validate timing and reject overlaps.
 - Browser smoke checks: play/pause, cue jumps, demo toggle, media loading, import/export, reset, keyboard, settings and narrow widths.
-- Audio recording/video encoding are not yet supported; do not suggest they already work.
+- Microphone recording and WAV export work in supported browsers; one-click finished-video encoding remains unimplemented.
 - Branch and PR workflow. Merge only once CI passes.
 
-Recommended version: v0.1.0 for the standalone introductory demo.
+Versioning: keep the repository entrypoint `index.html` and downloadable `CueCraft.html` filenames stable. Increment only `<meta name="app-version">` in `index.html` using SemVer; the header reads that value dynamically. UDA deploys Git commits from registered apps, not HTML filename changes.
 
 ## Voiceover recording (v0.2.0)
 

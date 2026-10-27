@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
+<meta name="application-name" content="CueCraft">
+<meta name="app-version" content="0.2.1">
 <title>CueCraft — Teleprompter & Voiceover Studio</title>
 <style>
 :root{--bg:#0b1119;--panel:#101a27;--panel2:#152233;--border:#28394d;--text:#eff7fc;--muted:#98a9bc;--accent:#66d5d6;--accent2:#ffcb7c;--reading-size:49px;--shadow:0 16px 40px #03071075}
@@ -13,7 +15,7 @@ button{border:1px solid var(--border);border-radius:11px;background:#1c2c3c;colo
 button.primary{background:var(--accent);color:#06161d;border-color:var(--accent);font-weight:800}button.primary:hover{background:#91e5e5}button.recording{background:#f8adad;color:#260f17;border-color:#f8adad}
 button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small{font-size:12px;padding:6px 9px}button.tiny{font-size:11px;padding:4px 8px}
 .top{height:75px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 23px;border-bottom:1px solid var(--border);background:#0d1520}
-.brand{display:flex;align-items:center;gap:14px;min-width:230px}.brandmark{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#174753;color:#8bf5f0;font-weight:900;font-size:18px}.brand b{letter-spacing:.1em}.brand small{display:block;margin-top:2px;font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.brand{display:flex;align-items:center;gap:14px;min-width:230px}.brandmark{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#174753;color:#8bf5f0;font-weight:900;font-size:18px}.brand b{letter-spacing:.1em}.brand small{display:block;margin-top:2px;font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}.brand #appVersion{font-weight:700;color:var(--accent);letter-spacing:.04em;text-transform:none}
 .top-status{display:flex;gap:17px;align-items:center;justify-content:center}.status-pill{border:1px solid #284d58;color:#87dedb;border-radius:30px;padding:7px 11px;font-size:12px;font-weight:700;letter-spacing:.06em}.status-pill.video{border-color:#606044;color:#f9d48a}.top-timer{font-size:23px;font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:.04em}.top-timer small{color:var(--muted);font-size:12px;font-weight:500}
 .top-actions{display:flex;gap:8px;align-items:center}
 .shell{max-width:1800px;margin:0 auto;padding:17px 22px 16px;display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:17px;height:calc(100vh - 75px - 105px);min-height:510px}
@@ -56,7 +58,7 @@ button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small
 </head>
 <body>
 <header class="top">
-  <div class="brand"><div class="brandmark">C</div><div><b>CueCraft</b><small>Teleprompter Studio</small></div></div>
+  <div class="brand"><div class="brandmark">C</div><div><b>CueCraft</b><small>Teleprompter Studio <span id="appVersion" aria-label="Application version"></span></small></div></div>
   <div class="top-status"><span id="modeLabel" class="status-pill">● TIMER MODE</span><div id="globalClock" class="top-timer">00:00 <small>/ 00:46</small></div></div>
   <div class="top-actions"><button id="importBtn" class="ghost" title="Import JSON, CSV or SRT">↥ Import</button><button id="exportBtn" class="ghost">↧ Export</button><button id="editBtn">✎ Edit cue</button></div>
 </header>
@@ -114,6 +116,9 @@ button.ghost{background:transparent}button.iconbtn{padding:9px 10px}button.small
 <div id="toast" class="toast" role="status"></div>
 <script>
 'use strict';
+// Keep this version in the HTML metadata. UDA deploys Git commits, not versioned filenames.
+const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 const ORIGINAL_CUES = [{"id": 1, "start": 0, "end": 14, "title": "Welcome", "text": "Welcome to CueCraft. This is your teleprompter workspace. Load a video, follow the highlighted words, or simply rehearse with the built-in timer.", "note": "Opening frame, or introduce your presentation"}, {"id": 2, "start": 14, "end": 30, "title": "Synchronise your script", "text": "Each section has a start and end time, so the words can follow your original footage. You can edit a cue, jump to another section, and adjust the reading speed whenever you need.", "note": "Demonstrate video, timeline and cue editor"}, {"id": 3, "start": 30, "end": 46, "title": "Save and reuse", "text": "Import or export scripts as JSON or CSV, and bring in existing subtitle timing from SRT files. Your content stays on your computer, and you can use this tool without an internet connection.", "note": "Show script import/export controls"}];
 const els={};for(const id of ['modeLabel','globalClock','sectionIndex','sectionTitle','rangeLabel','paceLabel','stage','stageClock','stageRemaining','readerTrack','stageSource','nextTitle','nextExcerpt','nextTime','video','videoPlaceholder','videoHint','videoFilename','demoBtn','demoFrame','demoCount','demoTitle','demoCaption','videoFile','loadVideoBtn','removeVideoBtn','audioRow','muteBtn','cueList','cueCounter','noteHeading','noteContent','progress','progressFill','playBtn','backBtn','forwardBtn','restartBtn','fullscreenBtn','speed','font','offset','mirrorBtn','importBtn','importFile','exportBtn','editBtn','editor','modalTitle','editTitle','editNote','editStart','editEnd','editText','editorError','editorPrevBtn','editorNextBtn','cancelEditBtn','saveEditBtn','resetScriptBtn','recordFrom','recordBtn','recordState','recordAvailability','takeList','toast']) els[id]=document.getElementById(id);
 const STORE='cuecraft-cues-v1';const SETTINGS='cuecraft-settings-v1';
