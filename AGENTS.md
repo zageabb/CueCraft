@@ -13,3 +13,7 @@
 
 10. Take trim is in-memory and non-destructive. Preserve media-time alignment for review/export.
 11. Keep reference video visible when take panel scrolls, and retain responsive layout.
+
+12. Default to cue-by-cue recording; preserve range and continuous modes and all original takes.
+13. Keep assembled audio tied to original media time; missing cues are silence, adjacent slices of one range take remain continuous. Never silently shift narration.
+14. Treat recorded audio and chosen take assignments as session-only, and never upload private media into this public repository.
