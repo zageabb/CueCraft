@@ -6,9 +6,21 @@ CueCraft is an **offline-first teleprompter and timed voiceover assistant**. It 
 
 The canonical GitHub file is always **`index.html`**; the standalone download is always **`CueCraft.html`**. Never add a release number to either filename.
 
-The current version is stored **inside the HTML** as `<meta name="app-version" content="0.2.1">` and is shown in the app header. The metadata is the single source of truth for the displayed version; update it for each release using semantic versioning.
+The current version is stored **inside the HTML** as `<meta name="app-version" content="0.2.2">` and is shown in the app header. The metadata is the single source of truth for the displayed version; update it for each release using semantic versioning.
 
 **UDA compatibility:** the Universal Deployment Agent updates registered apps by following Git commits on the configured branch (normally `main`). A stable `index.html` allows a deployed checkout or static publisher to serve the same path after a Git update. The HTML version is for identifying the running build; adding metadata alone does **not** register CueCraft in UDA, configure a web server or enable automatic deployment.
+
+## Responsive studio layout (v0.2.2)
+
+The studio uses the browser's full available width. On desktop, the reference video occupies roughly **39%** of the layout by default and grows or shrinks with the window; the autocue fills the remaining space.
+
+- **Resize:** drag the slim **↔** handle between the narration and video panels.
+- **Keyboard:** focus the divider; use **Left** to enlarge the video and **Right** to enlarge the script; **Home** and **End** select the limits.
+- **Reset:** double-click the divider for the original 39% split.
+- **Remember:** the divider setting is saved as a proportion, not pixels, so it remains practical when moving between laptop and external monitors.
+- **Smaller screens:** at widths of 980 pixels or less, the app stacks the autocue above a full-width reference video, avoiding horizontal scrolling.
+
+Screen layout changes do not change the script or recording timings.
 
 ## Try the guided demo
 
