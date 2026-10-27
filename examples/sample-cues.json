@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "start": 0,
+    "end": 14,
+    "title": "Welcome",
+    "text": "Welcome to CueCraft. This is your teleprompter workspace. Load a video, follow the highlighted words, or simply rehearse with the built-in timer.",
+    "note": "Opening frame, or introduce your presentation"
+  },
+  {
+    "id": 2,
+    "start": 14,
+    "end": 30,
+    "title": "Synchronise your script",
+    "text": "Each section has a start and end time, so the words can follow your original footage. You can edit a cue, jump to another section, and adjust the reading speed whenever you need.",
+    "note": "Demonstrate video, timeline and cue editor"
+  },
+  {
+    "id": 3,
+    "start": 30,
+    "end": 46,
+    "title": "Save and reuse",
+    "text": "Import or export scripts as JSON or CSV, and bring in existing subtitle timing from SRT files. Your content stays on your computer, and you can use this tool without an internet connection.",
+    "note": "Show script import/export controls"
+  }
+]
