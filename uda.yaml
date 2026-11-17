@@ -1,0 +1,28 @@
+schema_version: 1
+application:
+  name: cuecraft
+  display_name: CueCraft
+  group: TAIJU - Development
+source:
+  branch: main
+runtime:
+  type: static
+  working_dir: .
+build:
+  working_dir: .
+  commands: []
+service:
+  type: static
+  port: 5094
+  health_path: /
+proxy:
+  enabled: true
+  path: /apps/cuecraft/
+  authentication: uda
+environment:
+  required: []
+deployment:
+  auto_update: true
+  rollback: true
+  github_reporting: false
+
