@@ -11,7 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "build" / "uda-public"
 ALLOWLIST = (
-    "index.html"
+    "index.html",
 )
 
 def stage() -> dict:
