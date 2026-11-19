@@ -1,0 +1,27 @@
+# V2 review candidate; no activation authority
+schema_version: 2
+application:
+  name: cuecraft
+  kind: web
+  display_name: "CueCraft"
+  group: "TAIJU - Development"
+source:
+  branch: main
+  repository: "zageabb/CueCraft"
+static:
+  output_dir: "."
+  publication: atomic-symlink
+  base_path: /apps/cuecraft/
+proxy:
+  enabled: true
+  upstream: static
+  canonical_path: /apps/cuecraft/
+  authentication: uda
+environment:
+  required: []
+deployment:
+  strategy: static
+  approval: explicit
+  auto_update: false
+  rollback: true
+  github_reporting: false
